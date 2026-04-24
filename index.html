@@ -29,7 +29,6 @@
 </div>
 
 <script>
-    // LLAVE ACTIVA
     const KEY = "AIzaSyAFCoVLKQ_0abWTCRrB3sexJnvZ1XCb2uQ";
     
     const rec = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
@@ -39,7 +38,6 @@
         window.speechSynthesis.cancel();
         const f = new SpeechSynthesisUtterance(t);
         f.lang = 'es-ES';
-        f.pitch = 0.8;
         f.onstart = () => document.getElementById('boca').classList.add('hablando');
         f.onend = () => {
             document.getElementById('boca').classList.remove('hablando');
@@ -51,23 +49,23 @@
     async function preguntarIA(texto) {
         document.getElementById('log').innerText = "CONECTANDO...";
         try {
-            // CAMBIO CRUCIAL: v1beta en lugar de v1
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${KEY}`;
+            // URL ACTUALIZADA AL MODELO FLASH-8B (MÁS COMPATIBLE)
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-8b:generateContent?key=${KEY}`;
             
             const r = await fetch(url, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    contents: [{ parts: [{ text: "Eres Bender de Futurama. Responde muy rudo, sarcástico y muy corto (máximo 6 palabras). Usuario: " + texto }] }]
+                    contents: [{ parts: [{ text: "Eres Bender de Futurama. Responde rudo y corto (máximo 5 palabras). Usuario: " + texto }] }]
                 })
             });
             
             const d = await r.json();
 
             if (d.error) {
-                document.getElementById('log').innerText = "ERROR GOOGLE: " + d.error.message;
-                hablar("Error de antena, saco de carne.");
-                return;
+                // Si este modelo también falla, intentamos el pro por si acaso
+                document.getElementById('log').innerText = "REINTENTANDO CON CANAL PRO...";
+                return reintentarPro(texto);
             }
 
             const respuestaIA = d.candidates[0].content.parts[0].text;
@@ -75,8 +73,24 @@
             document.getElementById('log').innerText = "BENDER: " + respuestaIA;
 
         } catch (e) {
-            hablar("Error crítico de antena.");
+            hablar("Mi antena ha explotado.");
             document.getElementById('log').innerText = "FALLO DE RED";
+        }
+    }
+
+    async function reintentarPro(texto) {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${KEY}`;
+        try {
+            const r = await fetch(url, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ contents: [{ parts: [{ text: "Eres Bender. Responde corto y rudo: " + texto }] }] })
+            });
+            const d = await r.json();
+            const respuestaIA = d.candidates[0].content.parts[0].text;
+            hablar(respuestaIA);
+        } catch(e) {
+            hablar("Google me tiene bloqueado el acceso.");
         }
     }
 
@@ -90,7 +104,7 @@
 
     function comenzar() {
         document.getElementById('capa').style.display = 'none';
-        hablar("Ya estoy aquí, saco de carne. ¿Qué quieres?");
+        hablar("¿Qué quieres ahora, saco de carne?");
     }
 </script>
 </body>
