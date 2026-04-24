@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BENDER UNIT 2.9.1 - FIX</title>
+    <title>BENDER UNIT 2.8 - FIXED</title>
     <style>
         :root { --glow: #ffe047; --bg: #000; }
         body { 
@@ -22,8 +22,7 @@
         .diente { background: #111; transition: background 0.05s; }
         .hablando .diente { animation: vibe 0.12s infinite alternate; }
         @keyframes vibe { from { background: #1a1a1a; } to { background: var(--glow); box-shadow: 0 0 15px var(--glow); } }
-        /* Debug invisible para ti, pero útil para que el sistema no se duerma */
-        #status { position: fixed; bottom: 10px; color: #111; font-family: monospace; font-size: 9px; pointer-events: none; }
+        #status { position: fixed; bottom: 10px; color: #111; font-family: monospace; font-size: 9px; }
     </style>
 </head>
 <body onclick="despertarBender()">
@@ -39,7 +38,7 @@
             <div class="diente"></div><div class="diente"></div><div class="diente"></div><div class="diente"></div><div class="diente"></div>
         </div>
     </div>
-    <div id="status">SISTEMA OFFLINE</div>
+    <div id="status">TOCA PARA INICIAR</div>
 
 <script>
     const API_KEY = "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";
@@ -55,21 +54,15 @@
         msg.lang = 'es-ES';
         msg.pitch = 0.3; 
         msg.rate = 0.9;
-        msg.onstart = () => {
-            document.getElementById('boca').classList.add('hablando');
-            if(recognition) try { recognition.stop(); } catch(e) {} // Para de escuchar mientras habla para no oírse a sí mismo
-        };
-        msg.onend = () => {
-            document.getElementById('boca').classList.remove('hablando');
-            reiniciarMicro(); // Vuelve a escuchar cuando termina de hablar
-        };
+        msg.onstart = () => document.getElementById('boca').classList.add('hablando');
+        msg.onend = () => document.getElementById('boca').classList.remove('hablando');
         window.speechSynthesis.speak(msg);
     }
 
     function parpadeo() {
         document.querySelectorAll('.ojo').forEach(e => e.classList.add('blink'));
         setTimeout(() => document.querySelectorAll('.ojo').forEach(e => e.classList.remove('blink')), 120);
-        setTimeout(parpadeo, Math.random() * 5000 + 2000);
+        setTimeout(parpadeo, Math.random() * 4000 + 3000);
     }
     parpadeo();
 
@@ -82,7 +75,7 @@
                 body: JSON.stringify({
                     "model": "llama-3.1-8b-instant",
                     "messages": [
-                        { "role": "system", "content": "Eres Bender. Responde de forma directa, ruda y muy breve. Máximo 10 palabras." },
+                        { "role": "system", "content": "Eres Bender. Responde como un asistente directo, rudo y breve. Máximo 12 palabras." },
                         { "role": "user", "content": prompt }
                     ]
                 })
@@ -98,7 +91,7 @@
         
         recognition = new Speech();
         recognition.lang = 'es-ES';
-        recognition.continuous = false; // Cambiado a false para que "cierre" frases y sea más preciso
+        recognition.continuous = true;
         recognition.interimResults = false;
 
         recognition.onstart = () => {
@@ -107,44 +100,45 @@
         };
 
         recognition.onresult = (e) => {
-            const texto = e.results[0][0].transcript.toLowerCase();
+            const texto = e.results[e.results.length - 1][0].transcript.toLowerCase();
             document.getElementById('status').innerText = "OÍDO: " + texto;
 
-            // ACTIVACIÓN
+            // 1. LÓGICA DE ACTIVACIÓN: Si oye "Bender", se activa.
             if (texto.includes("bender")) {
                 activo = true;
-                hablar("¿Qué quieres ahora?");
+                hablar("¿Qué quieres ahora, saco de carne?");
                 return;
             }
-
-            // DESACTIVACIÓN
+            
+            // 2. LÓGICA DE DESACTIVACIÓN: Si oye "cállate" o "duerme", se apaga.
             if (texto.includes("cállate") || texto.includes("duerme")) {
                 activo = false;
-                hablar("Por fin.");
+                hablar("Por fin, paz.");
                 return;
             }
 
-            // RESPUESTA
+            // 3. RESPUESTA: Solo si ha sido activado previamente por su nombre.
             if (activo) {
                 consultaIA(texto);
             }
         };
 
         recognition.onerror = (event) => {
-            console.log("Error micro:", event.error);
             escuchando = false;
-            setTimeout(reiniciarMicro, 200);
+            setTimeout(reiniciarMicro, 500);
         };
 
         recognition.onend = () => {
             escuchando = false;
-            setTimeout(reiniciarMicro, 100); // Siempre reinicia
+            reiniciarMicro();
         };
     }
 
     function reiniciarMicro() {
-        if (!escuchando && !window.speechSynthesis.speaking) {
-            try { recognition.start(); } catch(e) {}
+        if (!escuchando) {
+            try {
+                recognition.start();
+            } catch(e) {}
         }
     }
 
@@ -152,7 +146,7 @@
         if (!recognition) configurarReconocimiento();
         window.speechSynthesis.speak(new SpeechSynthesisUtterance(""));
         reiniciarMicro();
-        document.getElementById('status').innerText = "ONLINE";
+        document.getElementById('status').innerText = "SISTEMA ONLINE";
     }
 </script>
 </body>
