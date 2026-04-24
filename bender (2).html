@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>BENDER AI - ASISTENTE TOTAL</title>
+    <style>
+        body { background: black; color: #ffff00; font-family: monospace; text-align: center; margin: 0; overflow: hidden; }
+        #interfaz { height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .ojo { width: 80px; height: 80px; background: #ffff00; display: inline-block; margin: 15px; border: 4px solid #444; }
+        #boca { width: 220px; height: 100px; border: 4px solid #444; display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; background: #111; }
+        .rejilla { background: #222; }
+        .hablando .rejilla { background: #ffff00; animation: vibrar 0.1s infinite; }
+        @keyframes vibrar { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+        #btn-inicio { 
+            padding: 40px; font-size: 30px; background: #ffff00; color: black; 
+            border: none; cursor: pointer; font-weight: bold; position: fixed; z-index: 999; width: 100%; height: 100%; top: 0; left: 0;
+        }
+        #log { position: fixed; bottom: 10px; width: 100%; color: #555; font-size: 14px; }
+        #mensaje-ia { color: white; font-size: 20px; margin-top: 20px; height: 40px; padding: 0 20px; }
+    </style>
+</head>
+<body>
+
+    <button id="btn-inicio" onclick="arrancar()">TOCA PARA DESPERTAR A BENDER</button>
+
+    <div id="interfaz">
+        <div class="ojos"><div class="ojo"></div><div class="ojo"></div></div>
+        <div id="boca">
+            <div class="rejilla"></div><div class="rejilla"></div><div class="rejilla"></div><div class="rejilla"></div><div class="rejilla"></div>
+            <div class="rejilla"></div><div class="rejilla"></div><div class="rejilla"></div><div class="rejilla"></div><div class="rejilla"></div>
+        </div>
+        <div id="mensaje-ia">Bender está dormido...</div>
+        <div id="log" id="debug-info">Estado: Esperando interacción</div>
+    </div>
+
+    <script>
+        const LLAVES = ["AIzaSyALbWb0ZEay3wYaggWwW7DOmVeb-fC19x8", "AIzaSyB_7lkG5eEs-aYHlDeQvSMsORR_JQKUm44", "AIzaSyAFCoVLKQ_0abWTCRrB3sexJnvZ1XCb2uQ"];
+        let actualIdx = 0;
+        let escuchando = false;
+
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const reconocimiento = new SpeechRecognition();
+        reconocimiento.lang = 'es-ES';
+        reconocimiento.continuous = false; // Cambiado a false para procesar frase a frase mejor
+
+        function benderDice(texto) {
+            reconocimiento.stop(); // Deja de escuchar mientras habla
+            escuchando = false;
+            
+            const synth = window.speechSynthesis;
+            const frase = new SpeechSynthesisUtterance(texto);
+            frase.lang = 'es-ES';
+            frase.pitch = 0.8;
+
+            frase.onstart = () => {
+                document.getElementById('boca').classList.add('hablando');
+                document.getElementById('mensaje-ia').innerText = texto;
+            };
+
+            frase.onend = () => {
+                document.getElementById('boca').classList.remove('hablando');
+                setTimeout(iniciarMicro, 500); // Vuelve a escuchar tras medio segundo
+            };
+
+            synth.speak(frase);
+        }
+
+        async function hablarConGemini(pregunta) {
+            document.getElementById('log').innerText = "Estado: Bender pensando...";
+            try {
+                const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${LLAVES[actualIdx]}`, {
+                    method: 'POST',
+                    body: JSON.stringify({contents:[{parts:[{text:"Eres Bender de Futurama. Responde muy corto y rudo. Usuario: "+pregunta}]}]})
+                });
+                const d = await r.json();
+                
+                if (r.status === 429) {
+                    actualIdx = (actualIdx + 1) % LLAVES.length;
+                    return hablarConGemini(pregunta);
+                }
+                
+                benderDice(d.candidates[0].content.parts[0].text);
+            } catch(e) {
+                benderDice("Tengo los circuitos fritos.");
+            }
+        }
+
+        function iniciarMicro() {
+            if (escuchando) return;
+            try {
+                reconocimiento.start();
+                escuchando = true;
+                document.getElementById('log').innerText = "Estado: ESCUCHANDO...";
+            } catch(e) {
+                console.log("Error al iniciar micro:", e);
+            }
+        }
+
+        reconocimiento.onresult = (evento) => {
+            const texto = evento.results[0][0].transcript;
+            document.getElementById('log').innerText = "Has dicho: " + texto;
+            hablarConGemini(texto);
+        };
+
+        reconocimiento.onend = () => {
+            escuchando = false;
+            // Si no está hablando la IA, reiniciar el micro inmediatamente
+            if (!window.speechSynthesis.speaking) {
+                setTimeout(iniciarMicro, 100);
+            }
+        };
+
+        reconocimiento.onerror = (e) => {
+            document.getElementById('log').innerText = "Error Micro: " + e.error;
+            escuchando = false;
+        };
+
+        function arrancar() {
+            document.getElementById('btn-inicio').style.display = 'none';
+            benderDice("¿Qué quieres ahora, saco de carne?");
+        }
+    </script>
+</body>
+</html>
