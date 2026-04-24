@@ -3,97 +3,131 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BENDER DOMÓTICA PRO</title>
+    <title>BENDER UNIT 2.0</title>
     <style>
-        body { background: #000; color: #ff0; font-family: monospace; text-align: center; margin: 0; overflow: hidden; }
-        #capa { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #ff0; color: #000; display: flex; align-items: center; justify-content: center; font-size: 25px; font-weight: bold; cursor: pointer; z-index: 1000; }
-        .ojo { width: 70px; height: 70px; background: #ff0; display: inline-block; margin: 15px; border-radius: 5px; box-shadow: 0 0 20px #ff0; }
-        #boca { width: 220px; height: 90px; border: 4px solid #444; margin: 20px auto; display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; background: #111; }
-        .rejilla { background: #222; }
-        .hablando .rejilla { background: #ff0; animation: a 0.1s infinite; }
-        @keyframes a { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
-        #log { font-size: 14px; color: #0f0; margin: 20px; text-transform: uppercase; border: 1px solid #333; padding: 10px; min-height: 20px; background: #050505; }
+        :root { --metal: #b1b1b1; --dark-metal: #888; --visor: #333; --eye: #ffe047; }
+        body { background: #1a1a1a; color: #0f0; font-family: 'Courier New', monospace; text-align: center; margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; }
+        
+        /* ANTENA */
+        .antena-bola { width: 20px; height: 20px; background: var(--metal); border-radius: 50%; border: 3px solid #333; margin-bottom: -5px; }
+        .antena-palo { width: 8px; height: 30px; background: var(--metal); border: 3px solid #333; }
+
+        /* CABEZA */
+        .cabeza { background: var(--metal); width: 200px; height: 240px; border-radius: 100px 100px 30px 30px; border: 5px solid #333; position: relative; box-shadow: inset -15px -10px 30px rgba(0,0,0,0.4); display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        
+        /* VISOR Y OJOS */
+        .visor { background: var(--visor); width: 170px; height: 70px; border-radius: 35px; border: 4px solid #000; display: flex; align-items: center; justify-content: center; gap: 15px; margin-top: 20px; }
+        .ojo { width: 50px; height: 50px; background: #000; border: 2px solid #555; position: relative; }
+        .pupila { width: 14px; height: 14px; background: var(--eye); position: absolute; top: 18px; left: 18px; box-shadow: 0 0 10px var(--eye); }
+
+        /* BOCA REJILLA */
+        .boca { width: 140px; height: 60px; background: #111; border: 4px solid #333; margin-top: 25px; border-radius: 5px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; padding: 3px; overflow: hidden; }
+        .diente { background: #333; transition: 0.05s; }
+        .hablando .diente { background: var(--eye); box-shadow: inset 0 0 5px #000; }
+
+        #log { margin-top: 20px; font-size: 12px; max-width: 300px; min-height: 50px; color: #555; }
+        .active-log { color: #0f0 !important; font-weight: bold; }
     </style>
 </head>
 <body>
 
-<div id="capa" onclick="comenzar()">CONECTAR CEREBRO GROQ</div>
-
-<div style="padding-top: 10vh;">
-    <div class="ojo"></div><div class="ojo"></div>
-    <div id="boca">
-        <div class="rejilla"></div><div class="rejilla"></div><div class="rejilla"></div><div class="rejilla"></div><div class="rejilla"></div>
-        <div class="rejilla"></div><div class="rejilla"></div><div class="rejilla"></div><div class="rejilla"></div><div class="rejilla"></div>
+    <div class="antena-bola"></div>
+    <div class="antena-palo"></div>
+    <div class="cabeza" id="cuerpo" onclick="encender()">
+        <div class="visor">
+            <div class="ojo"><div class="pupila"></div></div>
+            <div class="ojo"><div class="pupila"></div></div>
+        </div>
+        <div class="boca" id="boca">
+            <div class="diente"></div><div class="diente"></div><div class="diente"></div><div class="diente"></div><div class="diente"></div>
+            <div class="diente"></div><div class="diente"></div><div class="diente"></div><div class="diente"></div><div class="diente"></div>
+            <div class="diente"></div><div class="diente"></div><div class="diente"></div><div class="diente"></div><div class="diente"></div>
+        </div>
     </div>
-    <div id="log">SISTEMA OFFLINE</div>
-</div>
+
+    <div id="log">TOCA A BENDER PARA CONECTAR</div>
 
 <script>
-    // PON AQUÍ TU LLAVE DE CONSOLE.GROQ.COM
     const API_KEY = "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";
-    
+    const API_URL = "https://api.groq.com/openai/v1/chat/completions";
+
+    let escuchandoBender = false;
+
     const rec = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
     rec.lang = 'es-ES';
+    rec.continuous = true;
+    rec.interimResults = false;
 
-    function hablar(t) {
+    function hablar(texto) {
         window.speechSynthesis.cancel();
-        const f = new SpeechSynthesisUtterance(t);
-        f.lang = 'es-ES';
-        f.pitch = 0.7;
-        f.onstart = () => document.getElementById('boca').classList.add('hablando');
-        f.onend = () => {
-            document.getElementById('boca').classList.remove('hablando');
-            setTimeout(() => { try { rec.start(); } catch(e) {} }, 600);
-        };
-        window.speechSynthesis.speak(f);
+        const speech = new SpeechSynthesisUtterance(texto);
+        speech.lang = 'es-ES';
+        speech.pitch = 0.5; // Voz más grave
+        speech.rate = 1.0;
+        
+        speech.onstart = () => document.getElementById('boca').classList.add('hablando');
+        speech.onend = () => document.getElementById('boca').classList.remove('hablando');
+        
+        window.speechSynthesis.speak(speech);
     }
 
-    async function preguntarIA(texto) {
-        document.getElementById('log').innerText = "PROCESANDO...";
+    async function preguntarCerebro(prompt) {
+        document.getElementById('log').innerText = "BENDER PENSANDO...";
         try {
-            const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+            const resp = await fetch(API_URL, {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${API_KEY}`
-                },
+                headers: { "Authorization": `Bearer ${API_KEY}`, "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    model: "llama-3.1-8b-instant",
+                    model: "llama3-8b-8192",
                     messages: [
-                        { role: "system", content: "Eres Bender. Responde rudo, corto (6 palabras) y sarcástico. Si te piden algo de domótica (luces, etc), di que lo harás cuando te dé la gana." },
-                        { role: "user", content: texto }
+                        { role: "system", content: "Eres Bender de Futurama. Responde de forma muy ruda, breve y sarcástica (máximo 8 palabras). Odias a los humanos." },
+                        { role: "user", content: prompt }
                     ]
                 })
             });
-
-            const d = await r.json();
-            
-            if (d.choices && d.choices[0]) {
-                const respuesta = d.choices[0].message.content;
-                hablar(respuesta);
-                document.getElementById('log').innerText = "BENDER: " + respuesta;
-            } else if (d.error) {
-                document.getElementById('log').innerText = "ERROR API: " + d.error.message;
-            }
-
+            const data = await resp.json();
+            const reply = data.choices[0].message.content;
+            document.getElementById('log').innerText = "BENDER: " + reply;
+            hablar(reply);
         } catch (e) {
-            console.error(e);
-            hablar("Error de conexión. Saco de carne.");
-            document.getElementById('log').innerText = "ERROR DE RED / CORS";
+            hablar("Mi antena no capta señal, saco de carne.");
         }
     }
 
-    rec.onresult = (e) => {
-        const oido = e.results[0][0].transcript;
-        document.getElementById('log').innerText = "OÍDO: " + oido;
-        preguntarIA(oido);
+    rec.onresult = (event) => {
+        const frase = event.results[event.results.length - 1][0].transcript.toLowerCase();
+        const log = document.getElementById('log');
+        log.innerText = "OÍDO: " + frase;
+        log.classList.add('active-log');
+
+        // LÓGICA DE ACTIVACIÓN
+        if (frase.includes("bender") || frase.includes("despierta")) {
+            escuchandoBender = true;
+            hablar("¿Qué quieres ahora, saco de carne?");
+            return;
+        }
+
+        // LÓGICA DE DESACTIVACIÓN
+        if (frase.includes("cállate") || frase.includes("a dormir") || frase.includes("descansa")) {
+            escuchandoBender = false;
+            hablar("Por fin... no me molestes.");
+            return;
+        }
+
+        // SOLO RESPONDE SI ESTÁ DESPIERTO
+        if (escuchandoBender) {
+            preguntarCerebro(frase);
+        }
     };
 
-    rec.onend = () => { if (!window.speechSynthesis.speaking) setTimeout(() => { try { rec.start(); } catch(e) {} }, 1000); };
+    // Auto-reinicio del micro si se corta
+    rec.onend = () => rec.start();
+    rec.onerror = () => rec.start();
 
-    function comenzar() {
-        document.getElementById('capa').style.display = 'none';
-        hablar("Cerebro activado. ¿Qué quieres?");
+    function encender() {
+        rec.start();
+        document.getElementById('log').innerText = "SISTEMA ONLINE. DI 'BENDER'...";
+        hablar("Unidad Bender 2.0 lista para ignorarte.");
     }
 </script>
 </body>
