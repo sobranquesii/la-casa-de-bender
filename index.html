@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BENDER HEAD UNIT 2.5</title>
+    <title>BENDER UNIT 2.6</title>
     <style>
         :root { --glow: #ffe047; --bg: #000; }
         
@@ -20,63 +20,55 @@
             -webkit-tap-highlight-color: transparent;
         }
 
-        /* Contenedor ajustable para encajar en los huecos de la impresión 3D */
+        /* Contenedor para alinear con los huecos de la cabeza 3D */
         .face-container {
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 70px; /* Ajusta la distancia entre ojos y boca aquí */
+            gap: 80px; /* Ajusta este valor para subir/bajar la boca */
         }
 
-        /* OJOS - Estilo Futurama */
-        .visor { display: flex; gap: 25px; }
+        /* OJOS */
+        .visor { display: flex; gap: 35px; }
         .ojo { 
-            width: 85px; 
-            height: 85px; 
+            width: 80px; 
+            height: 80px; 
             background: #111; 
             position: relative; 
             overflow: hidden;
-            border: 1px solid #222;
+            border-radius: 4px;
         }
         .pupila { 
-            width: 26px; height: 26px; 
+            width: 24px; height: 24px; 
             background: var(--glow); 
-            position: absolute; top: 29px; left: 29px; 
-            box-shadow: 0 0 20px var(--glow); 
+            position: absolute; top: 28px; left: 28px; 
+            box-shadow: 0 0 25px var(--glow); 
         }
-        /* Párpado mecánico para el parpadeo */
         .ojo::after {
             content: "";
             position: absolute; top: 0; left: 0; width: 100%; height: 0%;
             background: #333;
-            transition: height 0.1s ease;
+            transition: height 0.08s ease;
         }
         .ojo.blink::after { height: 100%; }
 
-        /* BOCA - Rejilla de luz */
+        /* BOCA */
         .boca { 
-            width: 230px; 
-            height: 100px; 
+            width: 220px; 
+            height: 90px; 
             display: grid; 
             grid-template-columns: repeat(5, 1fr); 
             grid-template-rows: repeat(3, 1fr);
-            gap: 6px; 
-            background: #000;
+            gap: 5px; 
         }
-        .diente { 
-            background: #1a1a1a; 
-            border-radius: 1px;
-            transition: background 0.05s;
-        }
+        .diente { background: #1a1a1a; transition: background 0.05s; }
         .hablando .diente { 
-            animation: pulse 0.12s infinite alternate;
+            animation: vibe 0.1s infinite alternate;
         }
-        @keyframes pulse {
+        @keyframes vibe {
             from { background: #222; }
             to { background: var(--glow); box-shadow: 0 0 15px var(--glow); }
         }
-
-        #debug { position: fixed; bottom: 5px; color: #111; font-size: 8px; font-family: monospace; }
     </style>
 </head>
 <body onclick="encender()">
@@ -86,7 +78,6 @@
             <div class="ojo" id="ojoL"><div class="pupila"></div></div>
             <div class="ojo" id="ojoR"><div class="pupila"></div></div>
         </div>
-
         <div class="boca" id="boca">
             <div class="diente"></div><div class="diente"></div><div class="diente"></div><div class="diente"></div><div class="diente"></div>
             <div class="diente"></div><div class="diente"></div><div class="diente"></div><div class="diente"></div><div class="diente"></div>
@@ -94,23 +85,21 @@
         </div>
     </div>
 
-    <div id="debug">ESPERANDO ACTIVACIÓN...</div>
-
 <script>
     const API_KEY = "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";
     const API_URL = "https://api.groq.com/openai/v1/chat/completions";
 
-    let isAwake = false;
-    let isStarted = false; // Flag para evitar el error de InvalidStateError
+    let activo = false;
+    let iniciado = false;
     let recognition;
 
-    // Configuración de Voz Masculina Grave
-    function hablar(t) {
+    // VOZ MASCULINA Y GRAVE
+    function hablar(texto) {
         window.speechSynthesis.cancel();
-        const msg = new SpeechSynthesisUtterance(t);
+        const msg = new SpeechSynthesisUtterance(texto);
         msg.lang = 'es-ES';
-        msg.pitch = 0.3; // Voz muy grave
-        msg.rate = 0.95; // Velocidad pausada, más imponente
+        msg.pitch = 0.25; // Súper grave para que parezca hombre
+        msg.rate = 0.9;   // Un pelín más lento para dar miedo
         
         msg.onstart = () => document.getElementById('boca').classList.add('hablando');
         msg.onend = () => document.getElementById('boca').classList.remove('hablando');
@@ -118,85 +107,83 @@
         window.speechSynthesis.speak(msg);
     }
 
-    // Animación de Parpadeo Aleatorio
+    // PARPADEO MECÁNICO
     setInterval(() => {
-        const eyes = [document.getElementById('ojoL'), document.getElementById('ojoR')];
+        const eyes = document.querySelectorAll('.ojo');
         eyes.forEach(e => e.classList.add('blink'));
-        setTimeout(() => eyes.forEach(e => e.classList.remove('blink')), 150);
-    }, Math.random() * 6000 + 2000);
+        setTimeout(() => eyes.forEach(e => e.classList.remove('blink')), 100);
+    }, Math.random() * 5000 + 3000);
 
-    async function consultaIA(texto) {
-        if (!texto.trim()) return;
-        document.getElementById('debug').innerText = "PENSANDO...";
-        
+    // CONSULTA A LA IA (REPARADA)
+    async function consultaIA(prompt) {
+        if (!prompt || prompt.length < 2) return; // Evita el Error 400 por texto vacío
+
         try {
-            const response = await fetch(API_URL, {
+            const r = await fetch(API_URL, {
                 method: "POST",
                 headers: { 
-                    "Authorization": `Bearer ${API_KEY}`,
+                    "Authorization": "Bearer " + API_KEY,
                     "Content-Type": "application/json" 
                 },
                 body: JSON.stringify({
-                    model: "llama3-8b-8192",
-                    messages: [
-                        { role: "system", content: "Eres Bender. Eres un asistente útil y eficiente, pero mantienes tu personalidad ruda, sarcástica y cínica. Responde directamente a lo que se te pide sin rodeos. Máximo 15 palabras. No menciones que eres una IA." },
-                        { role: "user", content: texto }
-                    ]
+                    "model": "llama-3.1-8b-instant", // Usamos el modelo más rápido y compatible
+                    "messages": [
+                        { "role": "system", "content": "Eres Bender. Actúa como un asistente útil pero grosero, rudo y muy breve. Responde a lo que se te pide directamente. Máximo 12 palabras." },
+                        { "role": "user", "content": prompt }
+                    ],
+                    "temperature": 0.5
                 })
             });
 
-            const data = await response.json();
-            if (data.choices && data.choices[0]) {
-                hablar(data.choices[0].message.content);
-                document.getElementById('debug').innerText = "ONLINE";
+            const d = await r.json();
+            if (d.choices && d.choices[0]) {
+                hablar(d.choices[0].message.content);
             }
         } catch (e) {
-            console.error(e);
-            document.getElementById('debug').innerText = "FALLO DE CONEXIÓN";
+            console.log("Error de conexión");
         }
     }
 
-    // Inicialización del Micrófono
+    // MICRÓFONO
     if ('webkitSpeechRecognition' in window) {
         recognition = new webkitSpeechRecognition();
         recognition.lang = 'es-ES';
         recognition.continuous = true;
-        recognition.interimResults = false;
 
         recognition.onresult = (e) => {
-            const frase = e.results[e.results.length - 1][0].transcript.toLowerCase();
-            document.getElementById('debug').innerText = "OÍDO: " + frase;
-
-            if (frase.includes("bender")) {
-                isAwake = true;
-                hablar("¿Qué quieres ahora?");
+            const texto = e.results[e.results.length - 1][0].transcript.toLowerCase();
+            
+            if (texto.includes("bender")) {
+                activo = true;
+                hablar("¿Qué quieres, saco de carne?");
                 return;
             }
             
-            if (frase.includes("cállate") || frase.includes("duerme")) {
-                isAwake = false;
-                hablar("Por fin, paz.");
+            if (texto.includes("cállate") || texto.includes("descansa")) {
+                activo = false;
+                hablar("Me largo a beber.");
                 return;
             }
 
-            if (isAwake) consultaIA(frase);
+            if (activo) {
+                consultaIA(texto);
+            }
         };
 
         recognition.onend = () => {
-            isStarted = false;
-            encender(); // Reinicio automático seguro
+            iniciado = false;
+            encender(); 
         };
     }
 
     function encender() {
-        if (recognition && !isStarted) {
+        if (recognition && !iniciado) {
             try {
                 recognition.start();
-                isStarted = true;
-                if (!isAwake) hablar("Sistemas Bender operativos.");
-                document.getElementById('debug').innerText = "ONLINE";
-            } catch (e) {
-                console.log("Reconocimiento ya en marcha.");
+                iniciado = true;
+                if (!activo) hablar("Unidad Bender online.");
+            } catch(err) {
+                console.log("Ya iniciado");
             }
         }
     }
