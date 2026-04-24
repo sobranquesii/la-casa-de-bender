@@ -2,132 +2,190 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BENDER UNIT 2.3</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>BENDER OS - HEAD UNIT</title>
     <style>
-        :root { --metal: #b1b1b1; --dark-metal: #888; --visor: #333; --eye: #ffe047; }
-        body { background: #1a1a1a; color: #0f0; font-family: 'Courier New', monospace; text-align: center; margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
+        :root { --eye-color: #ffe047; --mouth-color: #ffe047; --bg: #000; }
         
-        .antena-bola { width: 20px; height: 20px; background: var(--metal); border-radius: 50%; border: 3px solid #333; margin-bottom: -5px; z-index: 2; }
-        .antena-palo { width: 8px; height: 35px; background: var(--metal); border: 3px solid #333; }
+        /* Pantalla negra total para que no se vea el borde del móvil en la máscara */
+        body { 
+            background: var(--bg); 
+            margin: 0; 
+            overflow: hidden; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: space-around; 
+            height: 100vh;
+            cursor: pointer;
+        }
 
-        .cabeza { background: var(--metal); width: 220px; height: 260px; border-radius: 110px 110px 40px 40px; border: 6px solid #333; position: relative; box-shadow: inset -15px -10px 30px rgba(0,0,0,0.4); display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; }
-        
-        .visor { background: var(--visor); width: 180px; height: 80px; border-radius: 40px; border: 5px solid #000; display: flex; align-items: center; justify-content: center; gap: 15px; margin-top: 10px; }
-        .ojo { width: 55px; height: 55px; background: #000; border: 2px solid #555; position: relative; }
-        .pupila { width: 16px; height: 16px; background: var(--eye); position: absolute; top: 19px; left: 19px; box-shadow: 0 0 12px var(--eye); }
+        /* OJOS - Parpadeo realista */
+        .visor { display: flex; gap: 40px; margin-top: 50px; }
+        .ojo { 
+            width: 80px; 
+            height: 80px; 
+            background: #222; 
+            border: 4px solid #111;
+            position: relative; 
+            overflow: hidden;
+            border-radius: 5px; /* Ojos cuadrados pero suavizados */
+        }
+        .pupila { 
+            width: 25px; height: 25px; 
+            background: var(--eye-color); 
+            position: absolute; top: 27px; left: 27px; 
+            box-shadow: 0 0 20px var(--eye-color); 
+        }
+        /* Párpado para el parpadeo */
+        .ojo::after {
+            content: "";
+            position: absolute; top: 0; left: 0; width: 100%; height: 0%;
+            background: #444;
+            transition: height 0.1s ease-in-out;
+        }
+        .ojo.blink::after { height: 100%; }
 
-        .boca { width: 150px; height: 70px; background: #111; border: 4px solid #333; margin-top: 25px; border-radius: 5px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; padding: 4px; overflow: hidden; }
-        .diente { background: #2a2a2a; transition: background 0.05s; }
-        .hablando .diente { background: var(--eye); box-shadow: 0 0 8px var(--eye); }
+        /* BOCA DE REJILLA - Estilo Serie */
+        .boca { 
+            width: 220px; 
+            height: 100px; 
+            display: grid; 
+            grid-template-columns: repeat(5, 1fr); 
+            grid-template-rows: repeat(3, 1fr);
+            gap: 4px; 
+            background: #111;
+            padding: 8px;
+            border-radius: 10px;
+        }
+        .diente { 
+            background: #333; 
+            transition: background 0.05s; 
+            border-radius: 2px;
+        }
+        /* Animación de habla */
+        .hablando .diente { 
+            animation: hablarAnim 0.2s infinite alternate;
+        }
+        @keyframes hablarAnim {
+            from { background: #444; }
+            to { background: var(--mouth-color); box-shadow: 0 0 10px var(--mouth-color); }
+        }
 
-        #log { margin-top: 30px; font-size: 13px; max-width: 320px; min-height: 60px; color: #666; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 10px; border: 1px solid #333; }
+        #status-log { position: fixed; bottom: 10px; font-family: monospace; color: #333; font-size: 10px; }
     </style>
 </head>
-<body>
+<body onclick="iniciarBender()">
 
-    <div class="antena-bola"></div>
-    <div class="antena-palo"></div>
-    <div class="cabeza" id="cuerpo-bender">
-        <div class="visor">
-            <div class="ojo"><div class="pupila"></div></div>
-            <div class="ojo"><div class="pupila"></div></div>
-        </div>
-        <div id="boca-bender" class="boca">
-            <div class="diente"></div><div class="diente"></div><div class="diente"></div><div class="diente"></div><div class="diente"></div>
-            <div class="diente"></div><div class="diente"></div><div class="diente"></div><div class="diente"></div><div class="diente"></div>
-            <div class="diente"></div><div class="diente"></div><div class="diente"></div><div class="diente"></div><div class="diente"></div>
-        </div>
+    <div class="visor">
+        <div class="ojo" id="ojoL"><div class="pupila"></div></div>
+        <div class="ojo" id="ojoR"><div class="pupila"></div></div>
     </div>
 
-    <div id="log">TOCA A BENDER PARA ENCENDER</div>
+    <div class="boca" id="boca">
+        <div class="diente"></div><div class="diente"></div><div class="diente"></div><div class="diente"></div><div class="diente"></div>
+        <div class="diente"></div><div class="diente"></div><div class="diente"></div><div class="diente"></div><div class="diente"></div>
+        <div class="diente"></div><div class="diente"></div><div class="diente"></div><div class="diente"></div><div class="diente"></div>
+    </div>
+
+    <div id="status-log">TOCA PARA CONECTAR CIRCUITOS</div>
 
 <script>
     const API_KEY = "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";
     const API_URL = "https://api.groq.com/openai/v1/chat/completions";
 
-    let escuchandoBender = false;
-    let isListening = false;
-
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    const recognition = new SpeechRecognition();
-    recognition.lang = 'es-ES';
-    recognition.continuous = true;
-
-    function hablar(texto) {
-        window.speechSynthesis.cancel();
-        const speech = new SpeechSynthesisUtterance(texto);
-        speech.lang = 'es-ES';
-        speech.pitch = 0.5;
-        speech.onstart = () => document.getElementById('boca-bender').classList.add('hablando');
-        speech.onend = () => document.getElementById('boca-bender').classList.remove('hablando');
-        window.speechSynthesis.speak(speech);
+    let activo = false;
+    let recognition;
+    
+    // Configurar Voz y Micrófono
+    if ('webkitSpeechRecognition' in window) {
+        recognition = new webkitSpeechRecognition();
+        recognition.lang = 'es-ES';
+        recognition.continuous = true;
     }
 
-    async function preguntarCerebro(prompt) {
-        document.getElementById('log').innerText = "CONECTANDO CON GROQ...";
+    // Función para buscar voz de hombre
+    function getBenderVoice() {
+        const voices = window.speechSynthesis.getVoices();
+        // Buscamos una voz que suene masculina o la de Google por defecto
+        return voices.find(v => v.name.includes('Male') || v.name.includes('España') || v.name.includes('Google español')) || voices[0];
+    }
+
+    function hablar(t) {
+        window.speechSynthesis.cancel();
+        const msg = new SpeechSynthesisUtterance(t);
+        msg.voice = getBenderVoice();
+        msg.pitch = 0.4; // Muy grave para que suene a robot
+        msg.rate = 1.0;
+        
+        msg.onstart = () => document.getElementById('boca').classList.add('hablando');
+        msg.onend = () => document.getElementById('boca').classList.remove('hablando');
+        
+        window.speechSynthesis.speak(msg);
+    }
+
+    // Lógica de parpadeo aleatorio
+    setInterval(() => {
+        const oL = document.getElementById('ojoL');
+        const oR = document.getElementById('ojoR');
+        oL.classList.add('blink'); oR.classList.add('blink');
+        setTimeout(() => {
+            oL.classList.remove('blink'); oR.classList.remove('blink');
+        }, 150);
+    }, Math.random() * 4000 + 2000);
+
+    async function preguntarGroq(texto) {
         try {
-            const r = await fetch(API_URL, {
+            const res = await fetch(API_URL, {
                 method: "POST",
-                headers: { 
-                    "Authorization": "Bearer " + API_KEY, 
-                    "Content-Type": "application/json" 
-                },
+                headers: { "Authorization": "Bearer " + API_KEY, "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    "model": "llama-3.3-70b-versatile", // Cambiado a un modelo más estándar de 2026
+                    "model": "llama3-8b-8192",
                     "messages": [
-                        { "role": "system", "content": "Eres Bender de Futurama. Responde corto, rudo y breve." },
-                        { "role": "user", "content": prompt }
+                        { "role": "system", "content": "Eres un asistente útil pero con la personalidad de Bender de Futurama. Responde de forma directa, útil y eficiente a lo que se te pide, pero con un tono sarcástico, rudo y breve. No menciones la serie a menos que sea necesario. Máximo 15 palabras." },
+                        { "role": "user", "content": texto }
                     ]
                 })
             });
-            
-            const d = await r.json();
-            
-            if (d.choices && d.choices[0]) {
-                const reply = d.choices[0].message.content;
-                document.getElementById('log').innerText = "BENDER: " + reply;
-                hablar(reply);
-            } else {
-                console.error("Error en respuesta:", d);
-                document.getElementById('log').innerText = "ERROR 400: FORMATO INVÁLIDO";
-            }
+            const data = await res.json();
+            const reply = data.choices[0].message.content;
+            hablar(reply);
         } catch (e) {
-            document.getElementById('log').innerText = "FALLO DE ANTENA";
+            hablar("Mis circuitos de red han petado, humano.");
         }
     }
 
-    recognition.onresult = (event) => {
-        const frase = event.results[event.results.length - 1][0].transcript.toLowerCase();
-        document.getElementById('log').innerText = "OÍDO: " + frase;
+    if (recognition) {
+        recognition.onresult = (e) => {
+            const oido = e.results[e.results.length - 1][0].transcript.toLowerCase();
+            
+            if (oido.includes("bender") || oido.includes("despierta")) {
+                activo = true;
+                hablar("Dime qué quieres y que sea rápido.");
+                return;
+            }
+            
+            if (oido.includes("cállate") || oido.includes("a dormir")) {
+                activo = false;
+                hablar("Por fin me dejas en paz.");
+                return;
+            }
 
-        if (frase.includes("bender") || frase.includes("despierta")) {
-            escuchandoBender = true;
-            hablar("¿Qué quieres ahora, saco de carne?");
-            return;
-        }
+            if (activo) preguntarGroq(oido);
+        };
+        recognition.onend = () => recognition.start();
+    }
 
-        if (frase.includes("cállate") || frase.includes("a dormir")) {
-            escuchandoBender = false;
-            hablar("Por fin descanso.");
-            return;
-        }
-
-        if (escuchandoBender) {
-            preguntarCerebro(frase);
-        }
-    };
-
-    recognition.onend = () => { isListening = false; try { recognition.start(); isListening = true; } catch(e) {} };
-
-    document.getElementById('cuerpo-bender').addEventListener('click', () => {
-        if (!isListening) {
+    function iniciarBender() {
+        if (recognition) {
             recognition.start();
-            isListening = true;
-            document.getElementById('log').innerText = "ONLINE. DI 'BENDER'...";
-            hablar("Unidad Bender online.");
+            hablar("Unidad Bender lista. Di mi nombre.");
+            document.getElementById('status-log').innerText = "CONECTADO - ESPERANDO WAKEWORD";
         }
-    });
+    }
+
+    // Cargar voces al inicio
+    window.speechSynthesis.onvoiceschanged = getBenderVoice;
 </script>
 </body>
 </html>
