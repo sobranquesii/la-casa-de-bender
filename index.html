@@ -29,7 +29,21 @@
 </div>
 
 <script>
-    const KEY = "AIzaSyAFCoVLKQ_0abWTCRrB3sexJnvZ1XCb2uQ";
+    const frases = [
+        "¡Besad mi brillante trasero metálico!",
+        "Voy a construir mi propio parque temático, con juegos de azar y mujerzuelas.",
+        "¡Saco de carne!",
+        "¿Unidad de doblaje? Yo soy Bender, ¡doblador de humanos!",
+        "¿Cerveza? ¿Dónde?",
+        "¡Me largo de aquí! Sois todos unos perdedores.",
+        "¡Malditos humanos! ¡Acabaré con todos!",
+        "Soy un robot, no tengo sentimientos. Bueno, sí, tengo hambre.",
+        "¿Quién quiere una ración de metal?",
+        "¡Estás arrestado por ser demasiado idiota!",
+        "¡Cállate y dame tu dinero!",
+        "¿Por qué no te callas y me traes una cerveza?"
+    ];
+
     const rec = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
     rec.lang = 'es-ES';
 
@@ -37,63 +51,34 @@
         window.speechSynthesis.cancel();
         const f = new SpeechSynthesisUtterance(t);
         f.lang = 'es-ES';
-        f.pitch = 0.8;
+        f.pitch = 0.7; // Voz un poco más grave tipo Bender
         f.onstart = () => document.getElementById('boca').classList.add('hablando');
         f.onend = () => {
             document.getElementById('boca').classList.remove('hablando');
-            setTimeout(() => { try { rec.start(); } catch(e) {} }, 600);
+            setTimeout(() => { try { rec.start(); document.getElementById('log').innerText = "ESCUCHANDO..."; } catch(e) {} }, 600);
         };
         window.speechSynthesis.speak(f);
     }
 
-    async function preguntarIA(texto) {
-        document.getElementById('log').innerText = "GENERANDO...";
-        try {
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${KEY}`;
-            
-            const r = await fetch(url, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    contents: [{ parts: [{ text: "Eres un robot de metal. Responde de forma muy breve (4 palabras) y directa. No uses saludos. Usuario dice: " + texto }] }],
-                    // Añadimos esto para intentar bajar la seguridad al mínimo
-                    safetySettings: [
-                        { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
-                        { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
-                        { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
-                        { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
-                    ]
-                })
-            });
-            
-            const d = await r.json();
-
-            if (d.candidates && d.candidates[0].content) {
-                const respuestaIA = d.candidates[0].content.parts[0].text;
-                hablar(respuestaIA);
-                document.getElementById('log').innerText = "BENDER: " + respuestaIA;
-            } else {
-                hablar("Silencio, saco de carne.");
-                document.getElementById('log').innerText = "BLOQUEO DE CONTENIDO";
-            }
-
-        } catch (e) {
-            hablar("Error en los circuitos.");
-            document.getElementById('log').innerText = "FALLO DE RED";
-        }
+    function responder() {
+        const fraseAleatoria = frases[Math.floor(Math.random() * frases.length)];
+        hablar(fraseAleatoria);
+        document.getElementById('log').innerText = "BENDER DICE: " + fraseAleatoria;
     }
 
     rec.onresult = (e) => {
         const oido = e.results[0][0].transcript;
         document.getElementById('log').innerText = "OÍDO: " + oido;
-        preguntarIA(oido);
+        // Da igual lo que digas, Bender te responderá como él quiere
+        setTimeout(responder, 500);
     };
 
     rec.onend = () => { if (!window.speechSynthesis.speaking) setTimeout(() => { try { rec.start(); } catch(e) {} }, 1000); };
 
     function comenzar() {
         document.getElementById('capa').style.display = 'none';
-        hablar("¿Qué quieres ahora?");
+        document.getElementById('log').innerText = "ESCUCHANDO...";
+        hablar("¿Qué quieres ahora, saco de carne?");
     }
 </script>
 </body>
