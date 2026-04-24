@@ -50,17 +50,29 @@
 
     async function pedirIA(mensaje) {
         document.getElementById('consola').innerText = "PENSANDO...";
+        // He cambiado la URL a la versión estable v1beta
+        const url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=AIzaSyAFCoVLKQ_0abWTCRrB3sexJnvZ1XCb2uQ";
+        
         try {
-            const respuesta = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
+            const respuesta = await fetch(url, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ contents: [{ parts: [{ text: "Eres Bender de Futurama. Responde corto, máximo 8 palabras, y muy rudo. Usuario dice: " + mensaje }] }] })
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: "Eres Bender de Futurama. Responde de forma muy corta (máximo 6 palabras), rudo y sarcástico. Usuario dice: " + mensaje }] }]
+                })
             });
+
             const data = await respuesta.json();
-            const textoIA = data.candidates[0].content.parts[0].text;
-            hablar(textoIA);
+            
+            if (data.candidates && data.candidates[0].content.parts[0].text) {
+                const textoIA = data.candidates[0].content.parts[0].text;
+                hablar(textoIA);
+            } else {
+                throw new Error("Respuesta vacía");
+            }
         } catch (error) {
-            hablar("Error en la antena, saco de carne.");
+            console.error(error);
+            hablar("Mi antena está frita, vuelve a intentarlo.");
         }
     }
 
