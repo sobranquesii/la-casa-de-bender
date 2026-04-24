@@ -3,109 +3,84 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BENDER AI</title>
+    <title>BENDER FINAL</title>
     <style>
-        body { background: black; color: yellow; font-family: monospace; text-align: center; margin: 0; overflow: hidden; }
-        #btn-inicio { width: 100vw; height: 100vh; position: fixed; top: 0; left: 0; background: yellow; color: black; font-size: 25px; font-weight: bold; border: none; cursor: pointer; z-index: 999; }
-        .ojo { width: 60px; height: 60px; background: yellow; display: inline-block; margin: 15px; border-radius: 5px; }
-        #boca { width: 200px; height: 90px; border: 4px solid #444; margin: 20px auto; display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; background: #111; }
+        body { background: #000; color: #ff0; font-family: 'Courier New', monospace; text-align: center; margin: 0; overflow: hidden; }
+        #capa-inicio { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #ff0; color: #000; display: flex; align-items: center; justify-content: center; font-size: 30px; font-weight: bold; cursor: pointer; z-index: 1000; }
+        .ojo { width: 80px; height: 80px; background: #ff0; display: inline-block; margin: 20px; box-shadow: 0 0 20px #ff0; }
+        #boca { width: 220px; height: 100px; border: 4px solid #444; margin: 20px auto; display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; background: #111; }
         .rejilla { background: #222; }
-        .hablando .rejilla { background: yellow; animation: v 0.1s infinite; }
-        @keyframes v { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
-        #consola { color: lime; font-size: 16px; background: #111; padding: 10px; margin: 10px; height: 60px; border: 1px solid #333; }
+        .hablando .rejilla { background: #ff0; animation: anim 0.1s infinite; }
+        @keyframes anim { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+        #consola { font-size: 18px; color: #0f0; margin-top: 20px; height: 50px; }
     </style>
 </head>
 <body>
 
-    <button id="btn-inicio" onclick="activar()">TOCA PARA ENCENDER A BENDER</button>
+<div id="capa-inicio" onclick="activarBender()">TOCA PARA DESPERTAR A BENDER</div>
 
-    <div style="padding-top: 10vh;">
-        <div class="ojo"></div><div class="ojo"></div>
-        <div id="boca">
-            <div class="rejilla"></div><div class="rejilla"></div><div class="rejilla"></div><div class="rejilla"></div><div class="rejilla"></div>
-            <div class="rejilla"></div><div class="rejilla"></div><div class="rejilla"></div><div class="rejilla"></div><div class="rejilla"></div>
-        </div>
-        <div id="consola">Esperando...</div>
+<div style="padding-top: 15vh;">
+    <div class="ojo"></div><div class="ojo"></div>
+    <div id="boca">
+        <div class="rejilla"></div><div class="rejilla"></div><div class="rejilla"></div><div class="rejilla"></div><div class="rejilla"></div>
+        <div class="rejilla"></div><div class="rejilla"></div><div class="rejilla"></div><div class="rejilla"></div><div class="rejilla"></div>
     </div>
+    <div id="consola">SISTEMA OFF</div>
+</div>
 
-    <script>
-        const API_KEYS = ["AIzaSyALbWb0ZEay3wYaggWwW7DOmVeb-fC19x8", "AIzaSyB_7lkG5eEs-aYHlDeQvSMsORR_JQKUm44", "AIzaSyAFCoVLKQ_0abWTCRrB3sexJnvZ1XCb2uQ"];
-        let keyIdx = 0;
+<script>
+    const API_KEY = "AIzaSyALbWb0ZEay3wYaggWwW7DOmVeb-fC19x8"; // Usaremos esta de base
+    const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+    recognition.lang = 'es-ES';
+    recognition.continuous = false;
 
-        const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-        recognition.lang = 'es-ES';
-        recognition.continuous = false; // Frase a frase es mucho más estable
+    function hablar(texto) {
+        window.speechSynthesis.cancel();
+        const frase = new SpeechSynthesisUtterance(texto);
+        frase.lang = 'es-ES';
+        frase.pitch = 0.7; // Voz más ruda
         
-        function hablar(texto) {
-            // 1. Paramos el micro para que Chrome no se raye
-            try { recognition.stop(); } catch(e) {}
-            
-            const utterance = new SpeechSynthesisUtterance(texto);
-            utterance.lang = 'es-ES';
-            utterance.pitch = 0.8;
-
-            utterance.onstart = () => {
-                document.getElementById('boca').classList.add('hablando');
-                document.getElementById('consola').innerText = "Bender: " + texto;
-            };
-
-            utterance.onend = () => {
-                document.getElementById('boca').classList.remove('hablando');
-                // 2. Solo cuando termina de hablar, volvemos a escuchar
-                setTimeout(iniciarEscucha, 500);
-            };
-
-            window.speechSynthesis.speak(utterance);
-        }
-
-        function iniciarEscucha() {
-            try {
-                recognition.start();
-                document.getElementById('consola').innerText = "Escuchando...";
-            } catch(e) {
-                // Si ya está escuchando, no hacemos nada
-            }
-        }
-
-        async function preguntarIA(pregunta) {
-            document.getElementById('consola').innerText = "Pensando...";
-            try {
-                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${API_KEYS[keyIdx]}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ contents: [{ parts: [{ text: "Eres Bender de Futurama. Responde corto y rudo. Usuario: " + pregunta }] }] })
-                });
-                const data = await res.json();
-                
-                if (res.status === 429) {
-                    keyIdx = (keyIdx + 1) % API_KEYS.length;
-                    return preguntarIA(pregunta);
-                }
-                
-                const respuesta = data.candidates[0].content.parts[0].text;
-                hablar(respuesta);
-            } catch (e) {
-                hablar("Tengo los circuitos fritos.");
-            }
-        }
-
-        recognition.onresult = (event) => {
-            const result = event.results[0][0].transcript;
-            document.getElementById('consola').innerText = "Dijiste: " + result;
-            preguntarIA(result);
+        frase.onstart = () => document.getElementById('boca').classList.add('hablando');
+        frase.onend = () => {
+            document.getElementById('boca').classList.remove('hablando');
+            setTimeout(() => { try { recognition.start(); } catch(e) {} }, 500);
         };
+        window.speechSynthesis.speak(frase);
+    }
 
-        // Si el micro se cierra por silencio o error, lo reiniciamos
-        recognition.onend = () => {
-            if (!window.speechSynthesis.speaking) {
-                setTimeout(iniciarEscucha, 300);
-            }
-        };
-
-        function activar() {
-            document.getElementById('btn-inicio').style.display = 'none';
-            hablar("¿Qué quieres ahora, saco de carne?");
+    async function pedirIA(mensaje) {
+        document.getElementById('consola').innerText = "PENSANDO...";
+        try {
+            const respuesta = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ contents: [{ parts: [{ text: "Eres Bender de Futurama. Responde corto, máximo 8 palabras, y muy rudo. Usuario dice: " + mensaje }] }] })
+            });
+            const data = await respuesta.json();
+            const textoIA = data.candidates[0].content.parts[0].text;
+            hablar(textoIA);
+        } catch (error) {
+            hablar("Error en la antena, saco de carne.");
         }
-    </script>
+    }
+
+    recognition.onresult = (event) => {
+        const resultado = event.results[0][0].transcript;
+        document.getElementById('consola').innerText = "OÍDO: " + resultado;
+        pedirIA(resultado);
+    };
+
+    recognition.onend = () => {
+        if (!window.speechSynthesis.speaking) {
+            setTimeout(() => { try { recognition.start(); } catch(e) {} }, 1000);
+        }
+    };
+
+    function activarBender() {
+        document.getElementById('capa-inicio').style.display = 'none';
+        document.getElementById('consola').innerText = "ESCUCHANDO...";
+        hablar("¿Qué quieres ahora, saco de carne?");
+    }
+</script>
 </body>
 </html>
