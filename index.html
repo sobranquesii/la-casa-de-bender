@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BENDER UNIT</title>
+    <title>BENDER FINAL</title>
     <style>
         body { background: #000; color: #ff0; font-family: monospace; text-align: center; margin: 0; overflow: hidden; }
         #capa { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #ff0; color: #000; display: flex; align-items: center; justify-content: center; font-size: 25px; font-weight: bold; cursor: pointer; z-index: 1000; }
-        .ojo { width: 70px; height: 70px; background: #ff0; display: inline-block; margin: 15px; }
-        #boca { width: 200px; height: 90px; border: 4px solid #444; margin: 20px auto; display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; background: #111; }
+        .ojo { width: 70px; height: 70px; background: #ff0; display: inline-block; margin: 15px; border-radius: 10px; }
+        #boca { width: 220px; height: 90px; border: 4px solid #444; margin: 20px auto; display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; background: #111; }
         .rejilla { background: #222; }
         .hablando .rejilla { background: #ff0; animation: a 0.1s infinite; }
         @keyframes a { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
@@ -29,9 +29,7 @@
 </div>
 
 <script>
-    // LLAVE DE EMERGENCIA
     const KEY = "AIzaSyAFCoVLKQ_0abWTCRrB3sexJnvZ1XCb2uQ";
-    
     const rec = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
     rec.lang = 'es-ES';
 
@@ -48,16 +46,16 @@
     }
 
     async function preguntarIA(texto) {
-        document.getElementById('log').innerText = "CONECTANDO...";
+        document.getElementById('log').innerText = "PROCESANDO...";
         try {
-            // USAMOS EL MODELO GEMINI-1.0-PRO (EL MÁS COMPATIBLE)
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.0-pro:generateContent?key=${KEY}`;
+            // USAMOS GEMINI 2.0 FLASH (EL MODELO MÁS NUEVO Y RÁPIDO)
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${KEY}`;
             
             const r = await fetch(url, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    contents: [{ parts: [{ text: "Eres Bender de Futurama. Responde muy rudo, corto (máximo 5 palabras). Usuario dice: " + texto }] }]
+                    contents: [{ parts: [{ text: "Eres un robot sarcástico llamado Bender. Responde muy corto (5 palabras máximo). Usuario dice: " + texto }] }]
                 })
             });
             
@@ -68,14 +66,14 @@
                 hablar(respuestaIA);
                 document.getElementById('log').innerText = "BENDER: " + respuestaIA;
             } else {
-                console.log(d);
-                document.getElementById('log').innerText = "ERROR DE RESPUESTA";
-                hablar("No tengo ganas de hablar contigo.");
+                // Si hay un error de seguridad, Bender responde algo predefinido
+                hablar("No me apetece responderte hoy.");
+                document.getElementById('log').innerText = "FILTRO DE SEGURIDAD ACTIVADO";
             }
 
         } catch (e) {
-            hablar("Error de antena.");
-            document.getElementById('log').innerText = "FALLO TOTAL";
+            hablar("Error de conexión total.");
+            document.getElementById('log').innerText = "FALLO DE RED";
         }
     }
 
@@ -89,7 +87,7 @@
 
     function comenzar() {
         document.getElementById('capa').style.display = 'none';
-        hablar("¿Qué quieres ahora, saco de carne?");
+        hablar("¿Qué quieres, saco de carne?");
     }
 </script>
 </body>
