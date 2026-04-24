@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BENDER UNIT 2.2</title>
+    <title>BENDER UNIT 2.3</title>
     <style>
         :root { --metal: #b1b1b1; --dark-metal: #888; --visor: #333; --eye: #ffe047; }
         body { background: #1a1a1a; color: #0f0; font-family: 'Courier New', monospace; text-align: center; margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
@@ -43,21 +43,17 @@
     <div id="log">TOCA A BENDER PARA ENCENDER</div>
 
 <script>
-    // Configuración
     const API_KEY = "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";
     const API_URL = "https://api.groq.com/openai/v1/chat/completions";
 
     let escuchandoBender = false;
     let isListening = false;
 
-    // Inicializar reconocimiento de voz
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
     recognition.lang = 'es-ES';
     recognition.continuous = true;
-    recognition.interimResults = false;
 
-    // Función para que Bender hable
     function hablar(texto) {
         window.speechSynthesis.cancel();
         const speech = new SpeechSynthesisUtterance(texto);
@@ -68,45 +64,46 @@
         window.speechSynthesis.speak(speech);
     }
 
-    // Función para llamar a la IA
     async function preguntarCerebro(prompt) {
-        document.getElementById('log').innerText = "BENDER PENSANDO...";
+        document.getElementById('log').innerText = "CONECTANDO CON GROQ...";
         try {
-            const resp = await fetch(API_URL, {
+            const r = await fetch(API_URL, {
                 method: "POST",
                 headers: { 
-                    "Authorization": `Bearer ${API_KEY}`, 
+                    "Authorization": "Bearer " + API_KEY, 
                     "Content-Type": "application/json" 
                 },
                 body: JSON.stringify({
-                    model: "llama3-8b-8192",
-                    messages: [
-                        { role: "system", content: "Eres Bender. Responde rudo, sarcástico y breve (8 palabras max). Odias a los humanos." },
-                        { role: "user", content: prompt }
+                    "model": "llama-3.3-70b-versatile", // Cambiado a un modelo más estándar de 2026
+                    "messages": [
+                        { "role": "system", "content": "Eres Bender de Futurama. Responde corto, rudo y breve." },
+                        { "role": "user", "content": prompt }
                     ]
                 })
             });
             
-            const data = await resp.json();
-            if(data.choices && data.choices[0]) {
-                const reply = data.choices[0].message.content;
+            const d = await r.json();
+            
+            if (d.choices && d.choices[0]) {
+                const reply = d.choices[0].message.content;
                 document.getElementById('log').innerText = "BENDER: " + reply;
                 hablar(reply);
+            } else {
+                console.error("Error en respuesta:", d);
+                document.getElementById('log').innerText = "ERROR 400: FORMATO INVÁLIDO";
             }
         } catch (e) {
-            document.getElementById('log').innerText = "ERROR DE CONEXIÓN";
-            hablar("Mi antena está frita.");
+            document.getElementById('log').innerText = "FALLO DE ANTENA";
         }
     }
 
-    // Evento de escucha
     recognition.onresult = (event) => {
         const frase = event.results[event.results.length - 1][0].transcript.toLowerCase();
         document.getElementById('log').innerText = "OÍDO: " + frase;
 
         if (frase.includes("bender") || frase.includes("despierta")) {
             escuchandoBender = true;
-            hablar("¿Qué quieres, saco de carne?");
+            hablar("¿Qué quieres ahora, saco de carne?");
             return;
         }
 
@@ -121,31 +118,16 @@
         }
     };
 
-    // Auto-reinicio
-    recognition.onend = () => { 
-        isListening = false; 
-        if(escuchandoBender || true) { // Siempre reiniciamos si se corta
-            try { recognition.start(); isListening = true; } catch(e) {} 
-        }
-    };
+    recognition.onend = () => { isListening = false; try { recognition.start(); isListening = true; } catch(e) {} };
 
-    // FUNCIÓN DE ENCENDIDO (VINCULADA POR JS PARA EVITAR ERRORES)
-    function encenderBender() {
+    document.getElementById('cuerpo-bender').addEventListener('click', () => {
         if (!isListening) {
-            try {
-                recognition.start();
-                isListening = true;
-                document.getElementById('log').innerText = "SISTEMA ONLINE. DI 'BENDER'...";
-                hablar("Unidad Bender online.");
-            } catch(e) {
-                console.log("Ya estaba encendido");
-            }
+            recognition.start();
+            isListening = true;
+            document.getElementById('log').innerText = "ONLINE. DI 'BENDER'...";
+            hablar("Unidad Bender online.");
         }
-    }
-
-    // Vincular el clic mediante JavaScript directamente
-    document.getElementById('cuerpo-bender').addEventListener('click', encenderBender);
-
+    });
 </script>
 </body>
 </html>
