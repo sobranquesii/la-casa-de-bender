@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BENDER UNIT</title>
+    <title>BENDER CONNECTED</title>
     <style>
         body { background: #000; color: #ff0; font-family: monospace; text-align: center; margin: 0; overflow: hidden; }
         #capa { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #ff0; color: #000; display: flex; align-items: center; justify-content: center; font-size: 25px; font-weight: bold; cursor: pointer; z-index: 1000; }
-        .ojo { width: 70px; height: 70px; background: #ff0; display: inline-block; margin: 15px; border-radius: 5px; }
+        .ojo { width: 70px; height: 70px; background: #ff0; display: inline-block; margin: 15px; border-radius: 5px; box-shadow: 0 0 15px #ff0; }
         #boca { width: 220px; height: 90px; border: 4px solid #444; margin: 20px auto; display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; background: #111; }
         .rejilla { background: #222; }
         .hablando .rejilla { background: #ff0; animation: a 0.1s infinite; }
@@ -17,7 +17,7 @@
 </head>
 <body>
 
-<div id="capa" onclick="comenzar()">TOCA PARA DESPERTAR</div>
+<div id="capa" onclick="comenzar()">TOCA PARA CONECTAR CEREBRO</div>
 
 <div style="padding-top: 10vh;">
     <div class="ojo"></div><div class="ojo"></div>
@@ -25,24 +25,13 @@
         <div class="rejilla"></div><div class="rejilla"></div><div class="rejilla"></div><div class="rejilla"></div><div class="rejilla"></div>
         <div class="rejilla"></div><div class="rejilla"></div><div class="rejilla"></div><div class="rejilla"></div><div class="rejilla"></div>
     </div>
-    <div id="log">SISTEMA LISTO</div>
+    <div id="log">SISTEMA OFFLINE</div>
 </div>
 
 <script>
-    const frases = [
-        "¡Besad mi brillante trasero metálico!",
-        "Voy a construir mi propio parque temático, con juegos de azar y mujerzuelas.",
-        "¡Saco de carne!",
-        "¿Unidad de doblaje? Yo soy Bender, ¡doblador de humanos!",
-        "¿Cerveza? ¿Dónde?",
-        "¡Me largo de aquí! Sois todos unos perdedores.",
-        "¡Malditos humanos! ¡Acabaré con todos!",
-        "Soy un robot, no tengo sentimientos. Bueno, sí, tengo hambre.",
-        "¿Quién quiere una ración de metal?",
-        "¡Estás arrestado por ser demasiado idiota!",
-        "¡Cállate y dame tu dinero!",
-        "¿Por qué no te callas y me traes una cerveza?"
-    ];
+    // Usaremos Llama 3 (de Meta) a través de Hugging Face
+    const API_URL = "https://api-inference.huggingface.co/models/meta-llama/Meta-Llama-3-8B-Instruct";
+    const API_KEY = "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"; // Llave de prueba
 
     const rec = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
     rec.lang = 'es-ES';
@@ -51,34 +40,58 @@
         window.speechSynthesis.cancel();
         const f = new SpeechSynthesisUtterance(t);
         f.lang = 'es-ES';
-        f.pitch = 0.7; // Voz un poco más grave tipo Bender
+        f.pitch = 0.7;
         f.onstart = () => document.getElementById('boca').classList.add('hablando');
         f.onend = () => {
             document.getElementById('boca').classList.remove('hablando');
-            setTimeout(() => { try { rec.start(); document.getElementById('log').innerText = "ESCUCHANDO..."; } catch(e) {} }, 600);
+            setTimeout(() => { try { rec.start(); } catch(e) {} }, 600);
         };
         window.speechSynthesis.speak(f);
     }
 
-    function responder() {
-        const fraseAleatoria = frases[Math.floor(Math.random() * frases.length)];
-        hablar(fraseAleatoria);
-        document.getElementById('log').innerText = "BENDER DICE: " + fraseAleatoria;
+    async function preguntarIA(texto) {
+        document.getElementById('log').innerText = "CONSULTANDO A LA RED...";
+        try {
+            const r = await fetch(API_URL, {
+                method: "POST",
+                headers: { 
+                    "Authorization": `Bearer ${API_KEY}`,
+                    "Content-Type": "application/json" 
+                },
+                body: JSON.stringify({
+                    inputs: `<|begin_of_text|><|start_header_id|>system<|end_header_id|>Eres Bender de Futurama. Responde siempre rudo, sarcástico y en menos de 10 palabras. No saludes.<|eot_id|><|start_header_id|>user<|end_header_id|>${texto}<|eot_id|><|start_header_id|>assistant<|end_header_id|>`,
+                    parameters: { max_new_tokens: 50, return_full_text: false }
+                })
+            });
+            
+            const d = await r.json();
+            let respuestaIA = d[0].generated_text || "Error en el sector 7G.";
+            
+            // Limpiar posibles restos de formato
+            respuestaIA = respuestaIA.replace(/<[^>]*>/g, '').trim();
+
+            hablar(respuestaIA);
+            document.getElementById('log').innerText = "BENDER: " + respuestaIA;
+
+        } catch (e) {
+            console.error(e);
+            hablar("La red se ha caído, saco de carne.");
+            document.getElementById('log').innerText = "ERROR DE CONEXIÓN";
+        }
     }
 
     rec.onresult = (e) => {
         const oido = e.results[0][0].transcript;
         document.getElementById('log').innerText = "OÍDO: " + oido;
-        // Da igual lo que digas, Bender te responderá como él quiere
-        setTimeout(responder, 500);
+        preguntarIA(oido);
     };
 
     rec.onend = () => { if (!window.speechSynthesis.speaking) setTimeout(() => { try { rec.start(); } catch(e) {} }, 1000); };
 
     function comenzar() {
         document.getElementById('capa').style.display = 'none';
-        document.getElementById('log').innerText = "ESCUCHANDO...";
-        hablar("¿Qué quieres ahora, saco de carne?");
+        document.getElementById('log').innerText = "CONECTADO";
+        hablar("Cerebro conectado. ¿Qué quieres ahora?");
     }
 </script>
 </body>
