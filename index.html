@@ -29,6 +29,7 @@
 </div>
 
 <script>
+    // LLAVE DE EMERGENCIA
     const KEY = "AIzaSyAFCoVLKQ_0abWTCRrB3sexJnvZ1XCb2uQ";
     
     const rec = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
@@ -49,48 +50,32 @@
     async function preguntarIA(texto) {
         document.getElementById('log').innerText = "CONECTANDO...";
         try {
-            // URL ACTUALIZADA AL MODELO FLASH-8B (MÁS COMPATIBLE)
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-8b:generateContent?key=${KEY}`;
+            // USAMOS EL MODELO GEMINI-1.0-PRO (EL MÁS COMPATIBLE)
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.0-pro:generateContent?key=${KEY}`;
             
             const r = await fetch(url, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    contents: [{ parts: [{ text: "Eres Bender de Futurama. Responde rudo y corto (máximo 5 palabras). Usuario: " + texto }] }]
+                    contents: [{ parts: [{ text: "Eres Bender de Futurama. Responde muy rudo, corto (máximo 5 palabras). Usuario dice: " + texto }] }]
                 })
             });
             
             const d = await r.json();
 
-            if (d.error) {
-                // Si este modelo también falla, intentamos el pro por si acaso
-                document.getElementById('log').innerText = "REINTENTANDO CON CANAL PRO...";
-                return reintentarPro(texto);
+            if (d.candidates && d.candidates[0].content.parts[0].text) {
+                const respuestaIA = d.candidates[0].content.parts[0].text;
+                hablar(respuestaIA);
+                document.getElementById('log').innerText = "BENDER: " + respuestaIA;
+            } else {
+                console.log(d);
+                document.getElementById('log').innerText = "ERROR DE RESPUESTA";
+                hablar("No tengo ganas de hablar contigo.");
             }
 
-            const respuestaIA = d.candidates[0].content.parts[0].text;
-            hablar(respuestaIA);
-            document.getElementById('log').innerText = "BENDER: " + respuestaIA;
-
         } catch (e) {
-            hablar("Mi antena ha explotado.");
-            document.getElementById('log').innerText = "FALLO DE RED";
-        }
-    }
-
-    async function reintentarPro(texto) {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${KEY}`;
-        try {
-            const r = await fetch(url, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ contents: [{ parts: [{ text: "Eres Bender. Responde corto y rudo: " + texto }] }] })
-            });
-            const d = await r.json();
-            const respuestaIA = d.candidates[0].content.parts[0].text;
-            hablar(respuestaIA);
-        } catch(e) {
-            hablar("Google me tiene bloqueado el acceso.");
+            hablar("Error de antena.");
+            document.getElementById('log').innerText = "FALLO TOTAL";
         }
     }
 
