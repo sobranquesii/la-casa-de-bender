@@ -29,8 +29,8 @@
 </div>
 
 <script>
-    // GROQ API - El motor más rápido para domótica
-    const API_KEY = "gsk_vBenderProject_EmergencyKey_777"; // Nota: Sustituye por una real de groq.com si esta falla.
+    // PON AQUÍ TU LLAVE DE CONSOLE.GROQ.COM
+    const API_KEY = "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";
     
     const rec = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
     rec.lang = 'es-ES';
@@ -49,18 +49,18 @@
     }
 
     async function preguntarIA(texto) {
-        document.getElementById('log').innerText = "PROCESANDO EN GROQ...";
+        document.getElementById('log').innerText = "PROCESANDO...";
         try {
             const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    "Authorization": `Bearer gsk_vRAnvWpXyPzWNoLksnIsmXNoFvHEnOsnGf8vRAnvWpXyPzWNoLksnIs` // Clave temporal
+                    "Authorization": `Bearer ${API_KEY}`
                 },
                 body: JSON.stringify({
                     model: "llama-3.1-8b-instant",
                     messages: [
-                        { role: "system", content: "Eres Bender. Responde muy rudo, corto (6 palabras) y sarcástico." },
+                        { role: "system", content: "Eres Bender. Responde rudo, corto (6 palabras) y sarcástico. Si te piden algo de domótica (luces, etc), di que lo harás cuando te dé la gana." },
                         { role: "user", content: texto }
                     ]
                 })
@@ -72,14 +72,14 @@
                 const respuesta = d.choices[0].message.content;
                 hablar(respuesta);
                 document.getElementById('log').innerText = "BENDER: " + respuesta;
-            } else {
-                throw new Error("Respuesta vacía");
+            } else if (d.error) {
+                document.getElementById('log').innerText = "ERROR API: " + d.error.message;
             }
 
         } catch (e) {
             console.error(e);
-            hablar("Mi antena Groq ha fallado. Saco de carne.");
-            document.getElementById('log').innerText = "ERROR DE API / CORS";
+            hablar("Error de conexión. Saco de carne.");
+            document.getElementById('log').innerText = "ERROR DE RED / CORS";
         }
     }
 
@@ -93,7 +93,7 @@
 
     function comenzar() {
         document.getElementById('capa').style.display = 'none';
-        hablar("Cerebro Groq activado. ¿Qué quieres?");
+        hablar("Cerebro activado. ¿Qué quieres?");
     }
 </script>
 </body>
