@@ -3,95 +3,93 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BENDER FINAL</title>
+    <title>BENDER UNIT</title>
     <style>
-        body { background: #000; color: #ff0; font-family: 'Courier New', monospace; text-align: center; margin: 0; overflow: hidden; }
-        #capa-inicio { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #ff0; color: #000; display: flex; align-items: center; justify-content: center; font-size: 30px; font-weight: bold; cursor: pointer; z-index: 1000; }
-        .ojo { width: 80px; height: 80px; background: #ff0; display: inline-block; margin: 20px; box-shadow: 0 0 20px #ff0; }
-        #boca { width: 220px; height: 100px; border: 4px solid #444; margin: 20px auto; display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; background: #111; }
+        body { background: #000; color: #ff0; font-family: monospace; text-align: center; margin: 0; }
+        #capa { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #ff0; color: #000; display: flex; align-items: center; justify-content: center; font-size: 25px; font-weight: bold; cursor: pointer; z-index: 1000; }
+        .ojo { width: 70px; height: 70px; background: #ff0; display: inline-block; margin: 15px; box-shadow: 0 0 15px #ff0; }
+        #boca { width: 200px; height: 90px; border: 4px solid #444; margin: 20px auto; display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; background: #111; }
         .rejilla { background: #222; }
-        .hablando .rejilla { background: #ff0; animation: anim 0.1s infinite; }
-        @keyframes anim { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
-        #consola { font-size: 18px; color: #0f0; margin-top: 20px; height: 50px; }
+        .hablando .rejilla { background: #ff0; animation: a 0.1s infinite; }
+        @keyframes a { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+        #consola { font-size: 16px; color: #0f0; margin: 20px; min-height: 40px; }
     </style>
 </head>
 <body>
 
-<div id="capa-inicio" onclick="activarBender()">TOCA PARA DESPERTAR A BENDER</div>
+<div id="capa" onclick="comenzar()">TOCA PARA ENCENDER</div>
 
-<div style="padding-top: 15vh;">
+<div style="padding-top: 10vh;">
     <div class="ojo"></div><div class="ojo"></div>
     <div id="boca">
         <div class="rejilla"></div><div class="rejilla"></div><div class="rejilla"></div><div class="rejilla"></div><div class="rejilla"></div>
         <div class="rejilla"></div><div class="rejilla"></div><div class="rejilla"></div><div class="rejilla"></div><div class="rejilla"></div>
     </div>
-    <div id="consola">SISTEMA OFF</div>
+    <div id="consola">ESPERANDO...</div>
 </div>
 
 <script>
-    const API_KEY = "AIzaSyALbWb0ZEay3wYaggWwW7DOmVeb-fC19x8"; // Usaremos esta de base
-    const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-    recognition.lang = 'es-ES';
-    recognition.continuous = false;
+    // LLAVE DE EMERGENCIA - Gemini 1.5 Flash
+    const API_KEY = "AIzaSyAFCoVLKQ_0abWTCRrB3sexJnvZ1XCb2uQ";
+    
+    const rec = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+    rec.lang = 'es-ES';
 
-    function hablar(texto) {
+    function hablar(t) {
         window.speechSynthesis.cancel();
-        const frase = new SpeechSynthesisUtterance(texto);
-        frase.lang = 'es-ES';
-        frase.pitch = 0.7; // Voz más ruda
-        
-        frase.onstart = () => document.getElementById('boca').classList.add('hablando');
-        frase.onend = () => {
+        const f = new SpeechSynthesisUtterance(t);
+        f.lang = 'es-ES';
+        f.onstart = () => document.getElementById('boca').classList.add('hablando');
+        f.onend = () => {
             document.getElementById('boca').classList.remove('hablando');
-            setTimeout(() => { try { recognition.start(); } catch(e) {} }, 500);
+            setTimeout(() => { try { rec.start(); } catch(e) {} }, 500);
         };
-        window.speechSynthesis.speak(frase);
+        window.speechSynthesis.speak(f);
     }
 
-    async function pedirIA(mensaje) {
-        document.getElementById('consola').innerText = "PENSANDO...";
-        // He cambiado la URL a la versión estable v1beta
-        const url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=AIzaSyAFCoVLKQ_0abWTCRrB3sexJnvZ1XCb2uQ";
-        
+    async function preguntarIA(texto) {
+        document.getElementById('consola').innerText = "CONECTANDO CON SATÉLITE...";
         try {
-            const respuesta = await fetch(url, {
+            const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    contents: [{ parts: [{ text: "Eres Bender de Futurama. Responde de forma muy corta (máximo 6 palabras), rudo y sarcástico. Usuario dice: " + mensaje }] }]
+                    contents: [{ parts: [{ text: "Eres Bender de Futurama. Responde muy rudo, corto (máximo 7 palabras) y sarcástico. Usuario dice: " + texto }] }]
                 })
             });
-
-            const data = await respuesta.json();
             
-            if (data.candidates && data.candidates[0].content.parts[0].text) {
-                const textoIA = data.candidates[0].content.parts[0].text;
-                hablar(textoIA);
-            } else {
-                throw new Error("Respuesta vacía");
+            const d = await r.json();
+            
+            // Si Google nos da error por la cara, lo capturamos aquí
+            if (d.error) {
+                console.error(d.error);
+                hablar("Google me está bloqueando, saco de carne.");
+                return;
             }
-        } catch (error) {
-            console.error(error);
-            hablar("Mi antena está frita, vuelve a intentarlo.");
+
+            const respuestaIA = d.candidates[0].content.parts[0].text;
+            hablar(respuestaIA);
+            document.getElementById('consola').innerText = "BENDER: " + respuestaIA;
+
+        } catch (e) {
+            hablar("La antena ha explotado. Reintenta.");
+            document.getElementById('consola').innerText = "ERROR DE RED";
         }
     }
 
-    recognition.onresult = (event) => {
-        const resultado = event.results[0][0].transcript;
-        document.getElementById('consola').innerText = "OÍDO: " + resultado;
-        pedirIA(resultado);
+    rec.onresult = (e) => {
+        const oido = e.results[0][0].transcript;
+        document.getElementById('consola').innerText = "OÍDO: " + oido;
+        preguntarIA(oido);
     };
 
-    recognition.onend = () => {
-        if (!window.speechSynthesis.speaking) {
-            setTimeout(() => { try { recognition.start(); } catch(e) {} }, 1000);
-        }
+    rec.onend = () => {
+        if (!window.speechSynthesis.speaking) setTimeout(() => { try { rec.start(); } catch(e) {} }, 1000);
     };
 
-    function activarBender() {
-        document.getElementById('capa-inicio').style.display = 'none';
-        document.getElementById('consola').innerText = "ESCUCHANDO...";
-        hablar("¿Qué quieres ahora, saco de carne?");
+    function comenzar() {
+        document.getElementById('capa').style.display = 'none';
+        hablar("¿Qué quieres ahora, saco de carne? Estoy escuchando.");
     }
 </script>
 </body>
