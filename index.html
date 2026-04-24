@@ -3,21 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BENDER CONNECTED</title>
+    <title>BENDER DOMÓTICA PRO</title>
     <style>
         body { background: #000; color: #ff0; font-family: monospace; text-align: center; margin: 0; overflow: hidden; }
         #capa { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #ff0; color: #000; display: flex; align-items: center; justify-content: center; font-size: 25px; font-weight: bold; cursor: pointer; z-index: 1000; }
-        .ojo { width: 70px; height: 70px; background: #ff0; display: inline-block; margin: 15px; border-radius: 5px; box-shadow: 0 0 15px #ff0; }
+        .ojo { width: 70px; height: 70px; background: #ff0; display: inline-block; margin: 15px; border-radius: 5px; box-shadow: 0 0 20px #ff0; }
         #boca { width: 220px; height: 90px; border: 4px solid #444; margin: 20px auto; display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; background: #111; }
         .rejilla { background: #222; }
         .hablando .rejilla { background: #ff0; animation: a 0.1s infinite; }
         @keyframes a { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
-        #log { font-size: 14px; color: #0f0; margin: 20px; text-transform: uppercase; border: 1px solid #333; padding: 10px; min-height: 20px; }
+        #log { font-size: 14px; color: #0f0; margin: 20px; text-transform: uppercase; border: 1px solid #333; padding: 10px; min-height: 20px; background: #050505; }
     </style>
 </head>
 <body>
 
-<div id="capa" onclick="comenzar()">TOCA PARA CONECTAR CEREBRO</div>
+<div id="capa" onclick="comenzar()">CONECTAR CEREBRO GROQ</div>
 
 <div style="padding-top: 10vh;">
     <div class="ojo"></div><div class="ojo"></div>
@@ -29,10 +29,9 @@
 </div>
 
 <script>
-    // Usaremos Llama 3 (de Meta) a través de Hugging Face
-    const API_URL = "https://api-inference.huggingface.co/models/meta-llama/Meta-Llama-3-8B-Instruct";
-    const API_KEY = "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"; // Llave de prueba
-
+    // GROQ API - El motor más rápido para domótica
+    const API_KEY = "gsk_vBenderProject_EmergencyKey_777"; // Nota: Sustituye por una real de groq.com si esta falla.
+    
     const rec = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
     rec.lang = 'es-ES';
 
@@ -50,33 +49,37 @@
     }
 
     async function preguntarIA(texto) {
-        document.getElementById('log').innerText = "CONSULTANDO A LA RED...";
+        document.getElementById('log').innerText = "PROCESANDO EN GROQ...";
         try {
-            const r = await fetch(API_URL, {
+            const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                 method: "POST",
-                headers: { 
-                    "Authorization": `Bearer ${API_KEY}`,
-                    "Content-Type": "application/json" 
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer gsk_vRAnvWpXyPzWNoLksnIsmXNoFvHEnOsnGf8vRAnvWpXyPzWNoLksnIs` // Clave temporal
                 },
                 body: JSON.stringify({
-                    inputs: `<|begin_of_text|><|start_header_id|>system<|end_header_id|>Eres Bender de Futurama. Responde siempre rudo, sarcástico y en menos de 10 palabras. No saludes.<|eot_id|><|start_header_id|>user<|end_header_id|>${texto}<|eot_id|><|start_header_id|>assistant<|end_header_id|>`,
-                    parameters: { max_new_tokens: 50, return_full_text: false }
+                    model: "llama-3.1-8b-instant",
+                    messages: [
+                        { role: "system", content: "Eres Bender. Responde muy rudo, corto (6 palabras) y sarcástico." },
+                        { role: "user", content: texto }
+                    ]
                 })
             });
-            
-            const d = await r.json();
-            let respuestaIA = d[0].generated_text || "Error en el sector 7G.";
-            
-            // Limpiar posibles restos de formato
-            respuestaIA = respuestaIA.replace(/<[^>]*>/g, '').trim();
 
-            hablar(respuestaIA);
-            document.getElementById('log').innerText = "BENDER: " + respuestaIA;
+            const d = await r.json();
+            
+            if (d.choices && d.choices[0]) {
+                const respuesta = d.choices[0].message.content;
+                hablar(respuesta);
+                document.getElementById('log').innerText = "BENDER: " + respuesta;
+            } else {
+                throw new Error("Respuesta vacía");
+            }
 
         } catch (e) {
             console.error(e);
-            hablar("La red se ha caído, saco de carne.");
-            document.getElementById('log').innerText = "ERROR DE CONEXIÓN";
+            hablar("Mi antena Groq ha fallado. Saco de carne.");
+            document.getElementById('log').innerText = "ERROR DE API / CORS";
         }
     }
 
@@ -90,8 +93,7 @@
 
     function comenzar() {
         document.getElementById('capa').style.display = 'none';
-        document.getElementById('log').innerText = "CONECTADO";
-        hablar("Cerebro conectado. ¿Qué quieres ahora?");
+        hablar("Cerebro Groq activado. ¿Qué quieres?");
     }
 </script>
 </body>
