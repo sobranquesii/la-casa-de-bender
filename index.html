@@ -12,12 +12,12 @@
         .rejilla { background: #222; }
         .hablando .rejilla { background: #ff0; animation: a 0.1s infinite; }
         @keyframes a { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
-        #log { font-size: 16px; color: #0f0; margin: 20px; }
+        #log { font-size: 16px; color: #0f0; margin: 20px; text-transform: uppercase; }
     </style>
 </head>
 <body>
 
-<div id="capa" onclick="comenzar()">TOCA PARA ENCENDER</div>
+<div id="capa" onclick="comenzar()">TOCA PARA DESPERTAR</div>
 
 <div style="padding-top: 10vh;">
     <div class="ojo"></div><div class="ojo"></div>
@@ -25,64 +25,69 @@
         <div class="rejilla"></div><div class="rejilla"></div><div class="rejilla"></div><div class="rejilla"></div><div class="rejilla"></div>
         <div class="rejilla"></div><div class="rejilla"></div><div class="rejilla"></div><div class="rejilla"></div><div class="rejilla"></div>
     </div>
-    <div id="log">ESPERANDO...</div>
+    <div id="log">SISTEMA LISTO</div>
 </div>
 
 <script>
-    // LLAVES DE REPUESTO - Si una falla, usa la otra
-    const KEYS = [
-        "AIzaSyAFCoVLKQ_0abWTCRrB3sexJnvZ1XCb2uQ",
-        "AIzaSyALbWb0ZEay3wYaggWwW7DOmVeb-fC19x8"
-    ];
-    let currentKey = 0;
-
+    // USAMOS UNA LLAVE DIRECTA SIN FILTROS
+    const KEY = "AIzaSyAFCoVLKQ_0abWTCRrB3sexJnvZ1XCb2uQ";
+    
     const rec = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
     rec.lang = 'es-ES';
+    rec.continuous = false;
 
     function hablar(t) {
         window.speechSynthesis.cancel();
         const f = new SpeechSynthesisUtterance(t);
         f.lang = 'es-ES';
+        f.pitch = 0.8;
         f.onstart = () => document.getElementById('boca').classList.add('hablando');
         f.onend = () => {
             document.getElementById('boca').classList.remove('hablando');
-            setTimeout(() => { try { rec.start(); } catch(e) {} }, 600);
+            setTimeout(() => { try { rec.start(); document.getElementById('log').innerText = "ESCUCHANDO..."; } catch(e) {} }, 600);
         };
         window.speechSynthesis.speak(f);
     }
 
     async function preguntarIA(texto) {
-        document.getElementById('log').innerText = "CONECTANDO...";
+        document.getElementById('log').innerText = "PENSANDO...";
         try {
-            const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${KEYS[currentKey]}`, {
+            // CAMBIO CLAVE: Usamos gemini-pro que es más compatible con peticiones directas
+            const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${KEY}`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    contents: [{ parts: [{ text: "Eres Bender de Futurama. Responde rudo y corto (máximo 6 palabras). Usuario: " + texto }] }]
+                    contents: [{ parts: [{ text: "Eres Bender de Futurama. Responde muy rudo y corto (máximo 5 palabras). Usuario dice: " + texto }] }]
                 })
             });
             
             const d = await r.json();
             
             if (d.candidates && d.candidates[0].content.parts[0].text) {
-                hablar(d.candidates[0].content.parts[0].text);
+                const respuestaIA = d.candidates[0].content.parts[0].text;
+                hablar(respuestaIA);
+                document.getElementById('log').innerText = "RESPUESTA RECIBIDA";
             } else {
-                // Si falla esta llave, probamos la siguiente
-                currentKey = (currentKey + 1) % KEYS.length;
-                preguntarIA(texto);
+                hablar("Google me está bloqueando, saco de carne.");
             }
         } catch (e) {
-            hablar("Mi antena está frita.");
+            console.error(e);
+            hablar("Mi antena ha explotado. Reintenta.");
+            document.getElementById('log').innerText = "ERROR DE RED";
         }
     }
 
     rec.onresult = (e) => {
         const oido = e.results[0][0].transcript;
-        document.getElementById('log').innerText = "OÍDO: " + oido;
+        document.getElementById('log').innerText = "HAS DICHO: " + oido;
         preguntarIA(oido);
     };
 
-    rec.onend = () => { if (!window.speechSynthesis.speaking) setTimeout(() => { try { rec.start(); } catch(e) {} }, 1000); };
+    rec.onend = () => {
+        if (!window.speechSynthesis.speaking) {
+            setTimeout(() => { try { rec.start(); document.getElementById('log').innerText = "ESCUCHANDO..."; } catch(e) {} }, 1000);
+        }
+    };
 
     function comenzar() {
         document.getElementById('capa').style.display = 'none';
