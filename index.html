@@ -3,132 +3,49 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BENDER UNIT 2.0</title>
+    <title>BENDER UNIT 2.1</title>
     <style>
         :root { --metal: #b1b1b1; --dark-metal: #888; --visor: #333; --eye: #ffe047; }
-        body { background: #1a1a1a; color: #0f0; font-family: 'Courier New', monospace; text-align: center; margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; }
+        body { background: #1a1a1a; color: #0f0; font-family: 'Courier New', monospace; text-align: center; margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
         
-        /* ANTENA */
-        .antena-bola { width: 20px; height: 20px; background: var(--metal); border-radius: 50%; border: 3px solid #333; margin-bottom: -5px; }
-        .antena-palo { width: 8px; height: 30px; background: var(--metal); border: 3px solid #333; }
+        .antena-bola { width: 20px; height: 20px; background: var(--metal); border-radius: 50%; border: 3px solid #333; margin-bottom: -5px; z-index: 2; }
+        .antena-palo { width: 8px; height: 35px; background: var(--metal); border: 3px solid #333; }
 
-        /* CABEZA */
-        .cabeza { background: var(--metal); width: 200px; height: 240px; border-radius: 100px 100px 30px 30px; border: 5px solid #333; position: relative; box-shadow: inset -15px -10px 30px rgba(0,0,0,0.4); display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .cabeza { background: var(--metal); width: 220px; height: 260px; border-radius: 110px 110px 40px 40px; border: 6px solid #333; position: relative; box-shadow: inset -15px -10px 30px rgba(0,0,0,0.4); display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; }
         
-        /* VISOR Y OJOS */
-        .visor { background: var(--visor); width: 170px; height: 70px; border-radius: 35px; border: 4px solid #000; display: flex; align-items: center; justify-content: center; gap: 15px; margin-top: 20px; }
-        .ojo { width: 50px; height: 50px; background: #000; border: 2px solid #555; position: relative; }
-        .pupila { width: 14px; height: 14px; background: var(--eye); position: absolute; top: 18px; left: 18px; box-shadow: 0 0 10px var(--eye); }
+        .visor { background: var(--visor); width: 180px; height: 80px; border-radius: 40px; border: 5px solid #000; display: flex; align-items: center; justify-content: center; gap: 15px; margin-top: 10px; }
+        .ojo { width: 55px; height: 55px; background: #000; border: 2px solid #555; position: relative; }
+        .pupila { width: 16px; height: 16px; background: var(--eye); position: absolute; top: 19px; left: 19px; box-shadow: 0 0 12px var(--eye); }
 
-        /* BOCA REJILLA */
-        .boca { width: 140px; height: 60px; background: #111; border: 4px solid #333; margin-top: 25px; border-radius: 5px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; padding: 3px; overflow: hidden; }
-        .diente { background: #333; transition: 0.05s; }
-        .hablando .diente { background: var(--eye); box-shadow: inset 0 0 5px #000; }
+        .boca { width: 150px; height: 70px; background: #111; border: 4px solid #333; margin-top: 25px; border-radius: 5px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; padding: 4px; overflow: hidden; }
+        .diente { background: #2a2a2a; transition: background 0.05s; }
+        .hablando .diente { background: var(--eye); box-shadow: 0 0 5px var(--eye); }
 
-        #log { margin-top: 20px; font-size: 12px; max-width: 300px; min-height: 50px; color: #555; }
-        .active-log { color: #0f0 !important; font-weight: bold; }
+        #log { margin-top: 30px; font-size: 13px; max-width: 320px; min-height: 60px; color: #666; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 10px; border: 1px solid #333; }
+        .active-log { color: #ffe047 !important; }
     </style>
 </head>
 <body>
 
     <div class="antena-bola"></div>
     <div class="antena-palo"></div>
-    <div class="cabeza" id="cuerpo" onclick="encender()">
+    <div class="cabeza" onclick="encender()">
         <div class="visor">
             <div class="ojo"><div class="pupila"></div></div>
             <div class="ojo"><div class="pupila"></div></div>
         </div>
-        <div class="boca" id="boca">
+        <div id="boca" class="boca">
             <div class="diente"></div><div class="diente"></div><div class="diente"></div><div class="diente"></div><div class="diente"></div>
             <div class="diente"></div><div class="diente"></div><div class="diente"></div><div class="diente"></div><div class="diente"></div>
             <div class="diente"></div><div class="diente"></div><div class="diente"></div><div class="diente"></div><div class="diente"></div>
         </div>
     </div>
 
-    <div id="log">TOCA A BENDER PARA CONECTAR</div>
+    <div id="log">TOCA A BENDER PARA ENCENDER</div>
 
 <script>
     const API_KEY = "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";
     const API_URL = "https://api.groq.com/openai/v1/chat/completions";
 
     let escuchandoBender = false;
-
-    const rec = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-    rec.lang = 'es-ES';
-    rec.continuous = true;
-    rec.interimResults = false;
-
-    function hablar(texto) {
-        window.speechSynthesis.cancel();
-        const speech = new SpeechSynthesisUtterance(texto);
-        speech.lang = 'es-ES';
-        speech.pitch = 0.5; // Voz más grave
-        speech.rate = 1.0;
-        
-        speech.onstart = () => document.getElementById('boca').classList.add('hablando');
-        speech.onend = () => document.getElementById('boca').classList.remove('hablando');
-        
-        window.speechSynthesis.speak(speech);
-    }
-
-    async function preguntarCerebro(prompt) {
-        document.getElementById('log').innerText = "BENDER PENSANDO...";
-        try {
-            const resp = await fetch(API_URL, {
-                method: "POST",
-                headers: { "Authorization": `Bearer ${API_KEY}`, "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    model: "llama3-8b-8192",
-                    messages: [
-                        { role: "system", content: "Eres Bender de Futurama. Responde de forma muy ruda, breve y sarcástica (máximo 8 palabras). Odias a los humanos." },
-                        { role: "user", content: prompt }
-                    ]
-                })
-            });
-            const data = await resp.json();
-            const reply = data.choices[0].message.content;
-            document.getElementById('log').innerText = "BENDER: " + reply;
-            hablar(reply);
-        } catch (e) {
-            hablar("Mi antena no capta señal, saco de carne.");
-        }
-    }
-
-    rec.onresult = (event) => {
-        const frase = event.results[event.results.length - 1][0].transcript.toLowerCase();
-        const log = document.getElementById('log');
-        log.innerText = "OÍDO: " + frase;
-        log.classList.add('active-log');
-
-        // LÓGICA DE ACTIVACIÓN
-        if (frase.includes("bender") || frase.includes("despierta")) {
-            escuchandoBender = true;
-            hablar("¿Qué quieres ahora, saco de carne?");
-            return;
-        }
-
-        // LÓGICA DE DESACTIVACIÓN
-        if (frase.includes("cállate") || frase.includes("a dormir") || frase.includes("descansa")) {
-            escuchandoBender = false;
-            hablar("Por fin... no me molestes.");
-            return;
-        }
-
-        // SOLO RESPONDE SI ESTÁ DESPIERTO
-        if (escuchandoBender) {
-            preguntarCerebro(frase);
-        }
-    };
-
-    // Auto-reinicio del micro si se corta
-    rec.onend = () => rec.start();
-    rec.onerror = () => rec.start();
-
-    function encender() {
-        rec.start();
-        document.getElementById('log').innerText = "SISTEMA ONLINE. DI 'BENDER'...";
-        hablar("Unidad Bender 2.0 lista para ignorarte.");
-    }
-</script>
-</body>
-</html>
+    let isListening = false;
