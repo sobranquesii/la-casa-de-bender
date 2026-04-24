@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BENDER UNIT 2.1</title>
+    <title>BENDER UNIT 2.2</title>
     <style>
         :root { --metal: #b1b1b1; --dark-metal: #888; --visor: #333; --eye: #ffe047; }
         body { background: #1a1a1a; color: #0f0; font-family: 'Courier New', monospace; text-align: center; margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
@@ -19,22 +19,21 @@
 
         .boca { width: 150px; height: 70px; background: #111; border: 4px solid #333; margin-top: 25px; border-radius: 5px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; padding: 4px; overflow: hidden; }
         .diente { background: #2a2a2a; transition: background 0.05s; }
-        .hablando .diente { background: var(--eye); box-shadow: 0 0 5px var(--eye); }
+        .hablando .diente { background: var(--eye); box-shadow: 0 0 8px var(--eye); }
 
         #log { margin-top: 30px; font-size: 13px; max-width: 320px; min-height: 60px; color: #666; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 10px; border: 1px solid #333; }
-        .active-log { color: #ffe047 !important; }
     </style>
 </head>
 <body>
 
     <div class="antena-bola"></div>
     <div class="antena-palo"></div>
-    <div class="cabeza" onclick="encender()">
+    <div class="cabeza" id="cuerpo-bender">
         <div class="visor">
             <div class="ojo"><div class="pupila"></div></div>
             <div class="ojo"><div class="pupila"></div></div>
         </div>
-        <div id="boca" class="boca">
+        <div id="boca-bender" class="boca">
             <div class="diente"></div><div class="diente"></div><div class="diente"></div><div class="diente"></div><div class="diente"></div>
             <div class="diente"></div><div class="diente"></div><div class="diente"></div><div class="diente"></div><div class="diente"></div>
             <div class="diente"></div><div class="diente"></div><div class="diente"></div><div class="diente"></div><div class="diente"></div>
@@ -44,8 +43,109 @@
     <div id="log">TOCA A BENDER PARA ENCENDER</div>
 
 <script>
+    // Configuración
     const API_KEY = "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";
     const API_URL = "https://api.groq.com/openai/v1/chat/completions";
 
     let escuchandoBender = false;
     let isListening = false;
+
+    // Inicializar reconocimiento de voz
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'es-ES';
+    recognition.continuous = true;
+    recognition.interimResults = false;
+
+    // Función para que Bender hable
+    function hablar(texto) {
+        window.speechSynthesis.cancel();
+        const speech = new SpeechSynthesisUtterance(texto);
+        speech.lang = 'es-ES';
+        speech.pitch = 0.5;
+        speech.onstart = () => document.getElementById('boca-bender').classList.add('hablando');
+        speech.onend = () => document.getElementById('boca-bender').classList.remove('hablando');
+        window.speechSynthesis.speak(speech);
+    }
+
+    // Función para llamar a la IA
+    async function preguntarCerebro(prompt) {
+        document.getElementById('log').innerText = "BENDER PENSANDO...";
+        try {
+            const resp = await fetch(API_URL, {
+                method: "POST",
+                headers: { 
+                    "Authorization": `Bearer ${API_KEY}`, 
+                    "Content-Type": "application/json" 
+                },
+                body: JSON.stringify({
+                    model: "llama3-8b-8192",
+                    messages: [
+                        { role: "system", content: "Eres Bender. Responde rudo, sarcástico y breve (8 palabras max). Odias a los humanos." },
+                        { role: "user", content: prompt }
+                    ]
+                })
+            });
+            
+            const data = await resp.json();
+            if(data.choices && data.choices[0]) {
+                const reply = data.choices[0].message.content;
+                document.getElementById('log').innerText = "BENDER: " + reply;
+                hablar(reply);
+            }
+        } catch (e) {
+            document.getElementById('log').innerText = "ERROR DE CONEXIÓN";
+            hablar("Mi antena está frita.");
+        }
+    }
+
+    // Evento de escucha
+    recognition.onresult = (event) => {
+        const frase = event.results[event.results.length - 1][0].transcript.toLowerCase();
+        document.getElementById('log').innerText = "OÍDO: " + frase;
+
+        if (frase.includes("bender") || frase.includes("despierta")) {
+            escuchandoBender = true;
+            hablar("¿Qué quieres, saco de carne?");
+            return;
+        }
+
+        if (frase.includes("cállate") || frase.includes("a dormir")) {
+            escuchandoBender = false;
+            hablar("Por fin descanso.");
+            return;
+        }
+
+        if (escuchandoBender) {
+            preguntarCerebro(frase);
+        }
+    };
+
+    // Auto-reinicio
+    recognition.onend = () => { 
+        isListening = false; 
+        if(escuchandoBender || true) { // Siempre reiniciamos si se corta
+            try { recognition.start(); isListening = true; } catch(e) {} 
+        }
+    };
+
+    // FUNCIÓN DE ENCENDIDO (VINCULADA POR JS PARA EVITAR ERRORES)
+    function encenderBender() {
+        if (!isListening) {
+            try {
+                recognition.start();
+                isListening = true;
+                document.getElementById('log').innerText = "SISTEMA ONLINE. DI 'BENDER'...";
+                hablar("Unidad Bender online.");
+            } catch(e) {
+                console.log("Ya estaba encendido");
+            }
+        }
+    }
+
+    // Vincular el clic mediante JavaScript directamente
+    document.getElementById('cuerpo-bender').addEventListener('click', encenderBender);
+
+</script>
+</body>
+</html>
