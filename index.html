@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BENDER UNIT 2.8</title>
+    <title>BENDER UNIT 2.9</title>
     <style>
         :root { --glow: #ffe047; --bg: #000; }
         body { 
@@ -22,7 +22,7 @@
         .diente { background: #111; transition: background 0.05s; }
         .hablando .diente { animation: vibe 0.12s infinite alternate; }
         @keyframes vibe { from { background: #1a1a1a; } to { background: var(--glow); box-shadow: 0 0 15px var(--glow); } }
-        #status { position: fixed; bottom: 10px; color: #111; font-family: monospace; font-size: 9px; }
+        #status { position: fixed; bottom: 10px; color: #000; font-family: monospace; font-size: 9px; }
     </style>
 </head>
 <body onclick="despertarBender()">
@@ -38,7 +38,7 @@
             <div class="diente"></div><div class="diente"></div><div class="diente"></div><div class="diente"></div><div class="diente"></div>
         </div>
     </div>
-    <div id="status">SISTEMA APAGADO - TOCA PARA INICIAR</div>
+    <div id="status">ESPERANDO TOQUE INICIAL</div>
 
 <script>
     const API_KEY = "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";
@@ -52,14 +52,13 @@
         window.speechSynthesis.cancel();
         const msg = new SpeechSynthesisUtterance(t);
         msg.lang = 'es-ES';
-        msg.pitch = 0.3; // Voz grave de hombre
+        msg.pitch = 0.3; 
         msg.rate = 0.9;
         msg.onstart = () => document.getElementById('boca').classList.add('hablando');
         msg.onend = () => document.getElementById('boca').classList.remove('hablando');
         window.speechSynthesis.speak(msg);
     }
 
-    // Parpadeo automático cada 4-7 segundos
     function parpadeo() {
         document.querySelectorAll('.ojo').forEach(e => e.classList.add('blink'));
         setTimeout(() => document.querySelectorAll('.ojo').forEach(e => e.classList.remove('blink')), 120);
@@ -76,7 +75,7 @@
                 body: JSON.stringify({
                     "model": "llama-3.1-8b-instant",
                     "messages": [
-                        { "role": "system", "content": "Eres Bender. Responde como un asistente directo, rudo y breve. Máximo 12 palabras. No divagues." },
+                        { "role": "system", "content": "Eres Bender. Responde de forma directa, útil pero ruda y breve. Máximo 12 palabras." },
                         { "role": "user", "content": prompt }
                     ]
                 })
@@ -97,57 +96,58 @@
 
         recognition.onstart = () => {
             escuchando = true;
-            document.getElementById('status').innerText = "ESCUCHANDO...";
+            document.getElementById('status').innerText = "VIGILANDO...";
         };
 
         recognition.onresult = (e) => {
             const texto = e.results[e.results.length - 1][0].transcript.toLowerCase();
-            document.getElementById('status').innerText = "OÍDO: " + texto;
 
+            // LÓGICA DE ACTIVACIÓN
             if (texto.includes("bender")) {
-                activo = true;
-                hablar("¿Qué quieres, saco de carne?");
+                if (!activo) {
+                    activo = true;
+                    hablar("¿Qué quieres ahora?");
+                }
                 return;
             }
-            if (texto.includes("cállate") || texto.includes("duerme")) {
-                activo = false;
-                hablar("A dormir.");
-                return;
-            }
-            if (activo) consultaIA(texto);
-        };
 
-        recognition.onerror = (event) => {
-            console.log("Error micro:", event.error);
-            escuchando = false;
-            if(event.error === 'not-allowed') alert("¡Permite el uso del micrófono!");
+            // LÓGICA DE DESACTIVACIÓN
+            if (texto.includes("cállate") || texto.includes("duerme") || texto.includes("descansa")) {
+                if (activo) {
+                    activo = false;
+                    hablar("Por fin descanso.");
+                }
+                return;
+            }
+
+            // SOLO RESPONDE SI ESTÁ ACTIVO
+            if (activo) {
+                consultaIA(texto);
+            }
         };
 
         recognition.onend = () => {
             escuchando = false;
-            reiniciarMicro(); // Auto-reinicio infinito
+            reiniciarMicro();
+        };
+
+        recognition.onerror = () => {
+            escuchando = false;
+            setTimeout(reiniciarMicro, 500);
         };
     }
 
     function reiniciarMicro() {
         if (!escuchando) {
-            try {
-                recognition.start();
-            } catch(e) {
-                // Si ya está iniciado, no hacemos nada
-            }
+            try { recognition.start(); } catch(e) {}
         }
     }
 
     function despertarBender() {
-        // Primera interacción: inicializar voz y micro
         if (!recognition) configurarReconocimiento();
-        
-        // Desbloquear síntesis de voz (necesario en iOS/Android)
         window.speechSynthesis.speak(new SpeechSynthesisUtterance(""));
-        
         reiniciarMicro();
-        if (!activo) hablar("Unidad Bender online.");
+        document.getElementById('status').innerText = "SISTEMA ACTIVO";
     }
 </script>
 </body>
