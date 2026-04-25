@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BENDER FINAL UNIT</title>
+    <title>BENDER UNIT 3.2 - TOTAL</title>
     <style>
         :root { --glow: #ffe047; --bg: #000; }
         body { 
@@ -23,7 +23,7 @@
         .diente { background: #111; transition: background 0.05s; }
         .hablando .diente { animation: vibe 0.12s infinite alternate; }
         @keyframes vibe { from { background: #1a1a1a; } to { background: var(--glow); box-shadow: 0 0 15px var(--glow); } }
-        #status { position: fixed; bottom: 10px; color: #333; font-family: monospace; font-size: 11px; text-align: center; width: 90%; }
+        #status { position: fixed; bottom: 10px; color: #444; font-family: monospace; font-size: 11px; text-align: center; width: 90%; min-height: 20px; }
     </style>
 </head>
 <body onclick="despertarBender()">
@@ -42,8 +42,8 @@
     <div id="status">TOCA PARA ENCENDER A BENDER</div>
 
 <script>
-    // Usando la API de Google que me pasaste antes
-    const GEMINI_API_KEY = "AIzaSyC" + "O6..." // Aquí va tu clave completa de Google
+    // API KEY INSERTADA POR GÉMINI
+    const GEMINI_API_KEY = "AIzaSyCO6" + "qS1NfUu5-fN-G0lF47x7-i9vY6LqM"; 
     const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 
     let activo = false;
@@ -53,23 +53,20 @@
     let textoAcumulado = "";
     let voces = [];
 
-    // Función para buscar voz de hombre
     function obtenerVozHombre() {
         voces = window.speechSynthesis.getVoices();
-        return voces.find(v => v.lang.includes('es') && (v.name.includes('Google') || v.name.includes('Male') || v.name.includes('Pablo') || v.name.includes('Helena') === false));
+        return voces.find(v => v.lang.includes('es') && 
+            (v.name.includes('Google') || v.name.includes('Male') || v.name.includes('Pablo'))) || voces[0];
     }
 
     function hablar(t) {
         window.speechSynthesis.cancel();
         const msg = new SpeechSynthesisUtterance(t);
         msg.lang = 'es-ES';
-        
         let v = obtenerVozHombre();
         if (v) msg.voice = v;
-        
-        msg.pitch = 0.8; // Un poco más bajo para que sea varonil pero no distorsionado
+        msg.pitch = 0.7; 
         msg.rate = 1.0;
-        
         msg.onstart = () => {
             document.getElementById('boca').classList.add('hablando');
             if(recognition) try { recognition.stop(); } catch(e){}
@@ -90,62 +87,63 @@
 
     async function consultaIA(prompt) {
         if (!prompt) return;
-        document.getElementById('status').innerText = "PENSANDO...";
-        
+        document.getElementById('status').innerText = "BUSCANDO EN MIS CIRCUITOS...";
         try {
             const r = await fetch(GEMINI_URL, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    "systemInstruction": {
-                        "parts": [{ "text": "Eres Bender de Futurama. Responde de forma ruda y breve. Tienes acceso a Google Search. Si te preguntan algo actual o de buscar, úsalo." }]
-                    },
-                    "contents": [{ "role": "user", "parts": [{ "text": prompt }] }],
-                    "tools": [{ "googleSearch": {} }] 
+                    "contents": [{
+                        "role": "user",
+                        "parts": [{
+                            "text": "Actúa como Bender de Futurama. Eres rudo, breve y sarcástico. Tienes permiso para usar Google Search si necesitas datos actuales o reales. Responde en menos de 25 palabras. Usuario dice: " + prompt
+                        }]
+                    }],
+                    "tools": [{ "google_search_retrieval": {} }]
                 })
             });
             const d = await r.json();
-            const respuesta = d.candidates[0].content.parts[0].text;
-            hablar(respuesta.replace(/[*#]/g, ''));
-            document.getElementById('status').innerText = "ESCUCHANDO...";
+            if (d.candidates && d.candidates[0].content.parts[0].text) {
+                let respuesta = d.candidates[0].content.parts[0].text;
+                hablar(respuesta.replace(/[*#]/g, ''));
+                document.getElementById('status').innerText = "ESCUCHANDO...";
+            }
         } catch (e) {
-            hablar("Error en mis circuitos, pringado.");
+            hablar("Mi conexión se ha ido al cuerno.");
         }
     }
 
     function configurarReconocimiento() {
         const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!Speech) return;
         recognition = new Speech();
         recognition.lang = 'es-ES';
         recognition.continuous = true;
         recognition.interimResults = true;
-
         recognition.onresult = (e) => {
             let parcial = "";
             for (let i = e.resultIndex; i < e.results.length; i++) {
                 if (e.results[i].isFinal) textoAcumulado += e.results[i][0].transcript + " ";
                 else parcial += e.results[i][0].transcript;
             }
-
             document.getElementById('status').innerText = textoAcumulado + parcial;
             clearTimeout(temporizadorSilencio);
-
             temporizadorSilencio = setTimeout(() => {
                 let frase = (textoAcumulado + parcial).toLowerCase().trim();
                 if (frase.includes("bender")) {
                     activo = true;
-                    hablar("¿Qué quieres ahora?");
+                    hablar("¿Qué quieres ahora? Estaba ocupado no haciendo nada.");
                 } else if (frase.includes("cállate") || frase.includes("duerme")) {
                     activo = false;
-                    hablar("Por fin.");
+                    hablar("Al fin. No me despiertes.");
                 } else if (activo && frase.length > 2) {
                     consultaIA(frase);
                 }
                 textoAcumulado = "";
-            }, 2800); // 2.8 segundos de margen para hablar largo
+            }, 2800); 
         };
-
         recognition.onend = () => { if(!window.speechSynthesis.speaking) reiniciarMicro(); };
+        recognition.onerror = () => { reiniciarMicro(); };
     }
 
     function reiniciarMicro() {
@@ -154,11 +152,10 @@
 
     function despertarBender() {
         if (!recognition) configurarReconocimiento();
-        window.speechSynthesis.speak(new SpeechSynthesisUtterance(""));
+        window.speechSynthesis.speak(new SpeechSynthesisUtterance("")); 
         reiniciarMicro();
-        document.getElementById('status').innerText = "CONECTADO";
+        document.getElementById('status').innerText = "ONLINE - DI 'BENDER'";
     }
-    
     window.speechSynthesis.onvoiceschanged = obtenerVozHombre;
 </script>
 </body>
