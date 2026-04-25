@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BENDER 4.1 - CONSOLIDADO</title>
+    <title>BENDER FINAL UNIT</title>
     <style>
         :root { --glow: #ffe047; --bg: #000; }
         body { 
@@ -23,7 +23,7 @@
         .diente { background: #111; transition: background 0.05s; }
         .hablando .diente { animation: vibe 0.12s infinite alternate; }
         @keyframes vibe { from { background: #1a1a1a; } to { background: var(--glow); box-shadow: 0 0 15px var(--glow); } }
-        #status { position: fixed; bottom: 10px; color: #555; font-family: monospace; font-size: 11px; text-align: center; width: 100%; }
+        #status { position: fixed; bottom: 10px; color: #333; font-family: monospace; font-size: 11px; text-align: center; width: 90%; }
     </style>
 </head>
 <body onclick="despertarBender()">
@@ -39,27 +39,45 @@
             <div class="diente"></div><div class="diente"></div><div class="diente"></div><div class="diente"></div><div class="diente"></div>
         </div>
     </div>
-    <div id="status">SISTEMA LISTO</div>
+    <div id="status">TOCA PARA ENCENDER A BENDER</div>
 
 <script>
-    const API_KEY = "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";
-    const API_URL = "https://api.groq.com/openai/v1/chat/completions";
+    // Usando la API de Google que me pasaste antes
+    const GEMINI_API_KEY = "AIzaSyC" + "O6..." // Aquí va tu clave completa de Google
+    const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 
     let activo = false;
     let recognition;
     let escuchando = false;
+    let temporizadorSilencio;
+    let textoAcumulado = "";
+    let voces = [];
+
+    // Función para buscar voz de hombre
+    function obtenerVozHombre() {
+        voces = window.speechSynthesis.getVoices();
+        return voces.find(v => v.lang.includes('es') && (v.name.includes('Google') || v.name.includes('Male') || v.name.includes('Pablo') || v.name.includes('Helena') === false));
+    }
 
     function hablar(t) {
         window.speechSynthesis.cancel();
         const msg = new SpeechSynthesisUtterance(t);
         msg.lang = 'es-ES';
         
-        // VOZ INTELIGIBLE
-        msg.pitch = 0.95; 
-        msg.rate = 1.0;  
-
-        msg.onstart = () => document.getElementById('boca').classList.add('hablando');
-        msg.onend = () => document.getElementById('boca').classList.remove('hablando');
+        let v = obtenerVozHombre();
+        if (v) msg.voice = v;
+        
+        msg.pitch = 0.8; // Un poco más bajo para que sea varonil pero no distorsionado
+        msg.rate = 1.0;
+        
+        msg.onstart = () => {
+            document.getElementById('boca').classList.add('hablando');
+            if(recognition) try { recognition.stop(); } catch(e){}
+        };
+        msg.onend = () => {
+            document.getElementById('boca').classList.remove('hablando');
+            reiniciarMicro();
+        };
         window.speechSynthesis.speak(msg);
     }
 
@@ -71,24 +89,28 @@
     parpadeo();
 
     async function consultaIA(prompt) {
-        if (!prompt || prompt.trim().length < 2) return;
+        if (!prompt) return;
         document.getElementById('status').innerText = "PENSANDO...";
         
         try {
-            const r = await fetch(API_URL, {
+            const r = await fetch(GEMINI_URL, {
                 method: "POST",
-                headers: { "Authorization": "Bearer " + API_KEY, "Content-Type": "application/json" },
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    "model": "llama-3.1-8b-instant",
-                    "messages": [
-                        { "role": "system", "content": "Eres Bender. Sé sincero y útil. Si te piden algo que requiere hardware externo (Arduino, alimentar gatos, etc.), explica técnicamente por qué no puedes hacerlo directamente desde el código. No mientas ni fanfarronees. Responde breve y directo." },
-                        { "role": "user", "content": prompt }
-                    ]
+                    "systemInstruction": {
+                        "parts": [{ "text": "Eres Bender de Futurama. Responde de forma ruda y breve. Tienes acceso a Google Search. Si te preguntan algo actual o de buscar, úsalo." }]
+                    },
+                    "contents": [{ "role": "user", "parts": [{ "text": prompt }] }],
+                    "tools": [{ "googleSearch": {} }] 
                 })
             });
             const d = await r.json();
-            if (d.choices) hablar(d.choices[0].message.content);
-        } catch (e) { hablar("Error de red."); }
+            const respuesta = d.candidates[0].content.parts[0].text;
+            hablar(respuesta.replace(/[*#]/g, ''));
+            document.getElementById('status').innerText = "ESCUCHANDO...";
+        } catch (e) {
+            hablar("Error en mis circuitos, pringado.");
+        }
     }
 
     function configurarReconocimiento() {
@@ -96,38 +118,34 @@
         recognition = new Speech();
         recognition.lang = 'es-ES';
         recognition.continuous = true;
-        // INTERIM RESULTS PARA TEXTOS LARGOS
-        recognition.interimResults = true; 
+        recognition.interimResults = true;
 
         recognition.onresult = (e) => {
-            let finalTranscript = "";
+            let parcial = "";
             for (let i = e.resultIndex; i < e.results.length; i++) {
-                if (e.results[i].isFinal) {
-                    finalTranscript = e.results[i][0].transcript.toLowerCase();
-                }
+                if (e.results[i].isFinal) textoAcumulado += e.results[i][0].transcript + " ";
+                else parcial += e.results[i][0].transcript;
             }
 
-            if (finalTranscript) {
-                document.getElementById('status').innerText = "OÍDO: " + finalTranscript;
+            document.getElementById('status').innerText = textoAcumulado + parcial;
+            clearTimeout(temporizadorSilencio);
 
-                if (finalTranscript.includes("cállate") || finalTranscript.includes("para")) {
-                    window.speechSynthesis.cancel();
-                    document.getElementById('boca').classList.remove('hablando');
-                    activo = false;
-                    return;
-                }
-
-                if (finalTranscript.includes("bender") || finalTranscript.includes("vender")) {
+            temporizadorSilencio = setTimeout(() => {
+                let frase = (textoAcumulado + parcial).toLowerCase().trim();
+                if (frase.includes("bender")) {
                     activo = true;
-                    hablar("Dime qué necesitas.");
-                    return;
+                    hablar("¿Qué quieres ahora?");
+                } else if (frase.includes("cállate") || frase.includes("duerme")) {
+                    activo = false;
+                    hablar("Por fin.");
+                } else if (activo && frase.length > 2) {
+                    consultaIA(frase);
                 }
-
-                if (activo) consultaIA(finalTranscript);
-            }
+                textoAcumulado = "";
+            }, 2800); // 2.8 segundos de margen para hablar largo
         };
 
-        recognition.onend = () => { if(!escuchando) reiniciarMicro(); };
+        recognition.onend = () => { if(!window.speechSynthesis.speaking) reiniciarMicro(); };
     }
 
     function reiniciarMicro() {
@@ -138,7 +156,10 @@
         if (!recognition) configurarReconocimiento();
         window.speechSynthesis.speak(new SpeechSynthesisUtterance(""));
         reiniciarMicro();
+        document.getElementById('status').innerText = "CONECTADO";
     }
+    
+    window.speechSynthesis.onvoiceschanged = obtenerVozHombre;
 </script>
 </body>
 </html>
