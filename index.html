@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BENDER UNIT 2.8 - FIXED</title>
+    <title>BENDER UNIT 2.8 - SUPER FIXED</title>
     <style>
         :root { --glow: #ffe047; --bg: #000; }
         body { 
@@ -22,7 +22,7 @@
         .diente { background: #111; transition: background 0.05s; }
         .hablando .diente { animation: vibe 0.12s infinite alternate; }
         @keyframes vibe { from { background: #1a1a1a; } to { background: var(--glow); box-shadow: 0 0 15px var(--glow); } }
-        #status { position: fixed; bottom: 10px; color: #111; font-family: monospace; font-size: 9px; }
+        #status { position: fixed; bottom: 10px; color: #fff; font-family: monospace; font-size: 12px; text-align: center; width: 100%; }
     </style>
 </head>
 <body onclick="despertarBender()">
@@ -38,7 +38,7 @@
             <div class="diente"></div><div class="diente"></div><div class="diente"></div><div class="diente"></div><div class="diente"></div>
         </div>
     </div>
-    <div id="status">TOCA PARA INICIAR</div>
+    <div id="status">TOCA LA PANTALLA PARA INICIAR</div>
 
 <script>
     const API_KEY = "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";
@@ -81,13 +81,23 @@
                 })
             });
             const d = await r.json();
-            if (d.choices) hablar(d.choices[0].message.content);
-        } catch (e) { console.log("Error API"); }
+            if (d.choices) {
+                hablar(d.choices[0].message.content);
+            } else {
+                hablar("Error en el cerebro robótico.");
+            }
+        } catch (e) { 
+            console.log("Error API", e);
+            hablar("Mis circuitos de internet han fallado."); 
+        }
     }
 
     function configurarReconocimiento() {
         const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (!Speech) return;
+        if (!Speech) {
+            document.getElementById('status').innerText = "ERROR: NAVEGADOR NO COMPATIBLE";
+            return;
+        }
         
         recognition = new Speech();
         recognition.lang = 'es-ES';
@@ -96,28 +106,28 @@
 
         recognition.onstart = () => {
             escuchando = true;
-            document.getElementById('status').innerText = "VIGILANDO...";
+            document.getElementById('status').innerText = "VIGILANDO... (Di 'Bender')";
         };
 
         recognition.onresult = (e) => {
             const texto = e.results[e.results.length - 1][0].transcript.toLowerCase();
             document.getElementById('status').innerText = "OÍDO: " + texto;
 
-            // 1. LÓGICA DE ACTIVACIÓN: Si oye "Bender", se activa.
-            if (texto.includes("bender")) {
+            // 1. LÓGICA DE ACTIVACIÓN: Ahora reconoce "bender" y "vender"
+            if (texto.includes("bender") || texto.includes("vender")) {
                 activo = true;
                 hablar("¿Qué quieres ahora, saco de carne?");
                 return;
             }
             
-            // 2. LÓGICA DE DESACTIVACIÓN: Si oye "cállate" o "duerme", se apaga.
+            // 2. LÓGICA DE DESACTIVACIÓN
             if (texto.includes("cállate") || texto.includes("duerme")) {
                 activo = false;
                 hablar("Por fin, paz.");
                 return;
             }
 
-            // 3. RESPUESTA: Solo si ha sido activado previamente por su nombre.
+            // 3. RESPUESTA
             if (activo) {
                 consultaIA(texto);
             }
@@ -125,6 +135,7 @@
 
         recognition.onerror = (event) => {
             escuchando = false;
+            document.getElementById('status').innerText = "ERROR DE MICRO: " + event.error;
             setTimeout(reiniciarMicro, 500);
         };
 
@@ -146,7 +157,7 @@
         if (!recognition) configurarReconocimiento();
         window.speechSynthesis.speak(new SpeechSynthesisUtterance(""));
         reiniciarMicro();
-        document.getElementById('status').innerText = "SISTEMA ONLINE";
+        document.getElementById('status').innerText = "SISTEMA ONLINE - ESPERANDO VOZ";
     }
 </script>
 </body>
