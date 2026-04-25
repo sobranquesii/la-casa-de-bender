@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>CHATARRA UNIT 3.3</title>
+    <title>CHATARRA 3.5 - SEARCH ONLINE</title>
     <style>
         :root { --glow: #ffe047; --bg: #000; }
         body { 
@@ -38,10 +38,10 @@
             <div class="diente"></div><div class="diente"></div><div class="diente"></div><div class="diente"></div><div class="diente"></div>
         </div>
     </div>
-    <div id="status">TOCA PARA DESPERTAR A CHATARRA</div>
+    <div id="status">TOCA PARA ENCENDER</div>
 
 <script>
-    const GEMINI_API_KEY = "AIzaSyCO6" + "qS1NfUu5-fN-G0lF47x7-i9vY6LqM"; 
+    const GEMINI_API_KEY = "AIzaSyCO6qS1NfUu5-fN-G0lF47x7-i9vY6LqM"; 
     const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 
     let activo = false;
@@ -49,25 +49,19 @@
     let escuchando = false;
     let temporizadorSilencio;
     let textoAcumulado = "";
-    let voces = [];
-
-    function obtenerVozHombre() {
-        voces = window.speechSynthesis.getVoices();
-        return voces.find(v => v.lang.includes('es') && 
-            (v.name.includes('Google') || v.name.includes('Male') || v.name.includes('Pablo'))) || voces[0];
-    }
 
     function hablar(t) {
         window.speechSynthesis.cancel();
         const msg = new SpeechSynthesisUtterance(t);
         msg.lang = 'es-ES';
-        let v = obtenerVozHombre();
-        if (v) msg.voice = v;
+        const voces = window.speechSynthesis.getVoices();
+        const vozHombre = voces.find(v => v.lang.includes('es') && (v.name.includes('Male') || v.name.includes('Pablo') || v.name.includes('Google')));
+        if (vozHombre) msg.voice = vozHombre;
         msg.pitch = 0.7; 
         msg.rate = 1.0;
         msg.onstart = () => {
             document.getElementById('boca').classList.add('hablando');
-            if(recognition && escuchando) try { recognition.stop(); } catch(e){}
+            if(recognition) try { recognition.stop(); } catch(e){}
         };
         msg.onend = () => {
             document.getElementById('boca').classList.remove('hablando');
@@ -85,29 +79,49 @@
 
     async function consultaIA(prompt) {
         if (!prompt) return;
-        document.getElementById('status').innerText = "PROCESANDO...";
+        document.getElementById('status').innerText = "RASTREANDO INTERNET...";
         try {
             const r = await fetch(GEMINI_URL, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     "contents": [{
-                        "parts": [{
-                            "text": "Eres Bender de Futurama, pero respondes al nombre de Chatarra. Eres rudo, sarcástico y directo. Tienes acceso a Google Search. Responde en máximo 20 palabras. Pregunta: " + prompt
-                        }]
+                        "parts": [{ "text": "Eres Bender de Futurama, respondes al nombre de Chatarra. Responde rudo y breve. Usa la herramienta de búsqueda de Google para responder con datos reales y actuales. Usuario: " + prompt }]
                     }],
-                    "tools": [{ "google_search_retrieval": {} }]
+                    "tools": [{ "google_search": {} }] // SINTAXIS OFICIAL ACTUALIZADA
                 })
             });
+            
             const d = await r.json();
+            
+            // Si Google rechaza la búsqueda por alguna política, intentamos sin herramientas
+            if (d.error && d.error.code === 400) {
+                console.log("Reintento sin búsqueda...");
+                return consultaIASinSearch(prompt);
+            }
+
             if (d.candidates && d.candidates[0].content.parts[0].text) {
-                let respuesta = d.candidates[0].content.parts[0].text;
-                hablar(respuesta.replace(/[*#]/g, ''));
+                hablar(d.candidates[0].content.parts[0].text.replace(/[*#]/g, ''));
                 document.getElementById('status').innerText = "ESCUCHANDO...";
             }
         } catch (e) {
-            hablar("Mis circuitos están fritos.");
+            hablar("Mi antena de internet está doblada.");
         }
+    }
+
+    // Función de respaldo por si falla la búsqueda
+    async function consultaIASinSearch(prompt) {
+        try {
+            const r = await fetch(GEMINI_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    "contents": [{ "parts": [{ "text": "Eres Chatarra (Bender). Responde rudo: " + prompt }] }]
+                })
+            });
+            const d = await r.json();
+            hablar(d.candidates[0].content.parts[0].text);
+        } catch (e) { hablar("Error total."); }
     }
 
     function configurarReconocimiento() {
@@ -124,32 +138,28 @@
                 if (e.results[i].isFinal) textoAcumulado += e.results[i][0].transcript + " ";
                 else parcial += e.results[i][0].transcript;
             }
-            
             document.getElementById('status').innerText = (textoAcumulado + parcial).toUpperCase();
             clearTimeout(temporizadorSilencio);
 
             temporizadorSilencio = setTimeout(() => {
                 let frase = (textoAcumulado + parcial).toLowerCase().trim();
-                
                 if (frase.includes("chatarra")) {
                     activo = true;
-                    hablar("¿Qué quieres ahora, saco de carne?");
+                    hablar("¿Qué quieres ahora? Estaba ocupado bebiendo.");
                 } else if (frase.includes("cállate") || frase.includes("duerme")) {
                     activo = false;
-                    hablar("Al fin silencio.");
+                    hablar("Por fin.");
                 } else if (activo && frase.length > 2) {
                     consultaIA(frase);
                 }
-                
                 textoAcumulado = "";
-            }, 2200); // Un poco más rápido para que no tarde tanto en responder
+            }, 2500);
         };
-
         recognition.onend = () => { if(!window.speechSynthesis.speaking) reiniciarMicro(); };
     }
 
     function reiniciarMicro() {
-        try { recognition.start(); escuchando = true; } catch(e) { escuchando = false; }
+        try { recognition.start(); escuchando = true; } catch(e) {}
     }
 
     function despertarChatarra() {
@@ -158,7 +168,6 @@
         reiniciarMicro();
         document.getElementById('status').innerText = "ONLINE - DI 'CHATARRA'";
     }
-    window.speechSynthesis.onvoiceschanged = obtenerVozHombre;
 </script>
 </body>
 </html>
