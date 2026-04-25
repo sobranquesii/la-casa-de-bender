@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>CHATARRA 4.1</title>
+    <title>CHATARRA 4.2</title>
     <style>
         :root { --glow: #ffe047; --bg: #000; }
-        body { background: var(--bg); margin: 0; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+        body { background: var(--bg); margin: 0; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; cursor: pointer; font-family: sans-serif; }
         .face-container { display: flex; flex-direction: column; align-items: center; gap: 85px; }
         .visor { display: flex; gap: 30px; }
         .ojo { width: 85px; height: 85px; background: #050505; border: 1px solid #111; position: relative; overflow: hidden; }
@@ -17,10 +17,10 @@
         .diente { background: #111; transition: background 0.05s; }
         .hablando .diente { animation: vibe 0.12s infinite alternate; }
         @keyframes vibe { from { background: #1a1a1a; } to { background: var(--glow); box-shadow: 0 0 15px var(--glow); } }
-        #status { position: fixed; bottom: 10px; color: #555; font-family: monospace; font-size: 11px; text-align: center; width: 90%; text-transform: uppercase; }
+        #status { position: fixed; bottom: 20px; color: #ffe047; font-family: monospace; font-size: 14px; text-align: center; width: 90%; text-transform: uppercase; letter-spacing: 2px; }
     </style>
 </head>
-<body onclick="despertarChatarra()">
+<body onclick="iniciar()">
 
     <div class="face-container">
         <div class="visor">
@@ -33,94 +33,58 @@
             <div class="diente"></div><div class="diente"></div><div class="diente"></div><div class="diente"></div><div class="diente"></div>
         </div>
     </div>
-    <div id="status">TOCA PARA ENCENDER A CHATARRA</div>
+    <div id="status">TOCA PARA DESPERTAR</div>
 
 <script>
-    // USANDO LA CLAVE 2 (MÁS ESTABLE) Y LA URL DE GOOGLE CORREGIDA
-    const KEY = "AIzaSyB9bODqYqUGlt0hOebEqAchBkfRqOUCLKo"; 
-    const URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${KEY}`;
+    // USANDO LA TERCERA CLAVE (NUEVA)
+    const KEY = "AIzaSyB_uXNj9P3gKHm1AXQfatSCR14RiU9C-Wo";
+    const URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${KEY}`;
 
     let activo = false;
     let recognition;
-    let escuchando = false;
-    let temporizadorSilencio;
     let textoAcumulado = "";
 
     function hablar(t) {
         window.speechSynthesis.cancel();
         const msg = new SpeechSynthesisUtterance(t);
         msg.lang = 'es-ES';
-        const voces = window.speechSynthesis.getVoices();
-        const vozMacho = voces.find(v => v.lang.includes('es') && (v.name.includes('Male') || v.name.includes('Pablo') || v.name.includes('Google')));
-        if (vozMacho) msg.voice = vozMacho;
-        msg.pitch = 0.7; 
-        msg.onstart = () => {
-            document.getElementById('boca').classList.add('hablando');
-            if(recognition) try { recognition.stop(); } catch(e){}
-        };
+        msg.pitch = 0.7;
+        msg.onstart = () => document.getElementById('boca').classList.add('hablando');
         msg.onend = () => {
             document.getElementById('boca').classList.remove('hablando');
-            reiniciarMicro();
+            try { recognition.start(); } catch(e) {}
         };
         window.speechSynthesis.speak(msg);
     }
 
-    function parpadeo() {
-        document.querySelectorAll('.ojo').forEach(e => e.classList.add('blink'));
-        setTimeout(() => document.querySelectorAll('.ojo').forEach(e => e.classList.remove('blink')), 120);
-        setTimeout(parpadeo, Math.random() * 4000 + 3000);
-    }
-    parpadeo();
-
     async function consultaIA(prompt) {
-        if (!prompt) return;
-        document.getElementById('status').innerText = "BUSCANDO EN LA RED...";
-        
-        const payload = {
-            "contents": [{
-                "parts": [{ "text": "Eres Chatarra (Bender). Rudo y breve. USA INTERNET PARA DATOS REALES. Máximo 15 palabras. Pregunta: " + prompt }]
-            }],
-            "tools": [{ "google_search_retrieval": {} }]
-        };
-
+        document.getElementById('status').innerText = "BUSCANDO...";
         try {
             const res = await fetch(URL, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload)
+                body: JSON.stringify({
+                    "contents": [{ "parts": [{ "text": "Eres Chatarra (Bender). Rudo, breve, sarcástico. Usa internet. Responde en 15 palabras: " + prompt }] }],
+                    "tools": [{ "google_search_retrieval": {} }]
+                })
             });
-            
             const d = await res.json();
-
-            if (d.candidates && d.candidates[0].content) {
-                let texto = d.candidates[0].content.parts[0].text;
-                hablar(texto.replace(/[*#]/g, ''));
-                document.getElementById('status').innerText = "ONLINE";
-            } else {
-                // FALLBACK: Si falla la búsqueda, pedimos respuesta normal
-                console.log("Reintento simple...");
-                delete payload.tools;
-                const res2 = await fetch(URL, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(payload)
-                });
-                const d2 = await res2.json();
-                hablar(d2.candidates[0].content.parts[0].text);
-            }
+            const respuesta = d.candidates[0].content.parts[0].text;
+            hablar(respuesta.replace(/[*#]/g, ''));
+            document.getElementById('status').innerText = "ONLINE";
         } catch (e) {
-            hablar("Mi antena se ha doblado. Repite, saco de carne.");
+            console.error(e);
+            hablar("Error de conexión. Mi antena está fatal.");
         }
     }
 
-    function configurarReconocimiento() {
+    function configurarMicro() {
         const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (!Speech) return;
         recognition = new Speech();
         recognition.lang = 'es-ES';
         recognition.continuous = true;
         recognition.interimResults = true;
-        
+
         recognition.onresult = (e) => {
             let parcial = "";
             for (let i = e.resultIndex; i < e.results.length; i++) {
@@ -128,35 +92,36 @@
                 else parcial += e.results[i][0].transcript;
             }
             document.getElementById('status').innerText = (textoAcumulado + parcial);
-            clearTimeout(temporizadorSilencio);
-
-            temporizadorSilencio = setTimeout(() => {
+            
+            clearTimeout(window.t);
+            window.t = setTimeout(() => {
                 let frase = (textoAcumulado + parcial).toLowerCase().trim();
                 if (frase.includes("chatarra")) {
                     activo = true;
-                    hablar("¿Qué quieres ahora? Estaba bebiendo.");
-                } else if (frase.includes("cállate") || frase.includes("duerme")) {
-                    activo = false;
-                    hablar("Por fin descanso.");
+                    hablar("¿Qué quieres, saco de carne?");
                 } else if (activo && frase.length > 2) {
                     consultaIA(frase);
                 }
                 textoAcumulado = "";
-            }, 2500); 
+            }, 2000);
         };
-        recognition.onend = () => { if(!window.speechSynthesis.speaking) reiniciarMicro(); };
+
+        recognition.onend = () => { if(!window.speechSynthesis.speaking) try { recognition.start(); } catch(e) {} };
+        recognition.start();
     }
 
-    function reiniciarMicro() {
-        try { recognition.start(); } catch(e) {}
+    function iniciar() {
+        if (!recognition) {
+            configurarMicro();
+            hablar("Sistemas listos. Llámame Chatarra.");
+            document.getElementById('status').innerText = "ONLINE";
+        }
     }
 
-    function despertarChatarra() {
-        if (!recognition) configurarReconocimiento();
-        window.speechSynthesis.speak(new SpeechSynthesisUtterance("")); 
-        reiniciarMicro();
-        document.getElementById('status').innerText = "DI 'CHATARRA' PARA ACTIVAR";
-    }
+    setInterval(() => {
+        document.querySelectorAll('.ojo').forEach(o => o.classList.add('blink'));
+        setTimeout(() => document.querySelectorAll('.ojo').forEach(o => o.classList.remove('blink')), 150);
+    }, 4000);
 </script>
 </body>
 </html>
