@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>CHATARRA UNIT 3.9 - FIXED</title>
+    <title>CHATARRA 4.0 - FINAL FIX</title>
     <style>
         :root { --glow: #ffe047; --bg: #000; }
         body { background: var(--bg); margin: 0; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; cursor: pointer; -webkit-tap-highlight-color: transparent; }
@@ -33,12 +33,12 @@
             <div class="diente"></div><div class="diente"></div><div class="diente"></div><div class="diente"></div><div class="diente"></div>
         </div>
     </div>
-    <div id="status">TOCA PARA DESPERTAR A CHATARRA</div>
+    <div id="status">TOCA PARA ENCENDER</div>
 
 <script>
-    // USANDO TU PRIMERA API KEY Y LA URL ESTABLE v1
+    // Usamos v1beta con el nombre de modelo completo, que es lo más compatible hoy
     const GEMINI_API_KEY = "AIzaSyBaarnZavbXCUTB9gCuN3u9oVsgk-jsk1o"; 
-    const GEMINI_URL = `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`;
+    const URL_BUSQUEDA = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 
     let activo = false;
     let recognition;
@@ -51,7 +51,7 @@
         const msg = new SpeechSynthesisUtterance(t);
         msg.lang = 'es-ES';
         const voces = window.speechSynthesis.getVoices();
-        const vozHombre = voces.find(v => v.lang.includes('es') && (v.name.includes('Male') || v.name.includes('Pablo') || v.name.includes('Google')));
+        const vozHombre = voces.find(v => v.lang.includes('es') && (v.name.includes('Male') || v.name.includes('Pablo')));
         if (vozHombre) msg.voice = vozHombre;
         msg.pitch = 0.7; 
         msg.rate = 1.0;
@@ -75,31 +75,40 @@
 
     async function consultaIA(prompt) {
         if (!prompt) return;
-        document.getElementById('status').innerText = "Rastreando datos, pringado...";
+        document.getElementById('status').innerText = "CONECTANDO CON EL SATÉLITE...";
         
         try {
-            const r = await fetch(GEMINI_URL, {
+            const response = await fetch(URL_BUSQUEDA, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     "contents": [{
-                        "parts": [{ "text": "Eres Bender (Chatarra). Rudo, breve y con humor negro. Responde en menos de 20 palabras. Pregunta: " + prompt }]
-                    }]
+                        "parts": [{ "text": "Eres Bender (Chatarra). Rudo, breve y usas internet. Máximo 15 palabras. Pregunta: " + prompt }]
+                    }],
+                    "tools": [{ "google_search_retrieval": {} }]
                 })
             });
             
-            const d = await r.json();
+            const d = await response.json();
 
             if (d.candidates && d.candidates[0].content) {
                 let texto = d.candidates[0].content.parts[0].text;
                 hablar(texto.replace(/[*#]/g, ''));
                 document.getElementById('status').innerText = "ONLINE";
             } else {
-                console.error("Respuesta vacía:", d);
-                hablar("No me apetece responderte.");
+                // Si falla la búsqueda, intentamos respuesta normal rápida
+                const fallback = await fetch(URL_BUSQUEDA, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        "contents": [{ "parts": [{ "text": "Respuesta ruda y corta: " + prompt }] }]
+                    })
+                });
+                const d2 = await fallback.json();
+                hablar(d2.candidates[0].content.parts[0].text);
             }
         } catch (e) {
-            hablar("Error en mi antena.");
+            hablar("Circuitos fritos. Inténtalo otra vez.");
         }
     }
 
@@ -124,10 +133,10 @@
                 let frase = (textoAcumulado + parcial).toLowerCase().trim();
                 if (frase.includes("chatarra")) {
                     activo = true;
-                    hablar("¿Qué quieres ahora? Estaba ocupado.");
+                    hablar("¿Qué quieres, saco de carne?");
                 } else if (frase.includes("cállate") || frase.includes("duerme")) {
                     activo = false;
-                    hablar("Al fin.");
+                    hablar("Por fin.");
                 } else if (activo && frase.length > 2) {
                     consultaIA(frase);
                 }
@@ -138,7 +147,7 @@
     }
 
     function reiniciarMicro() {
-        try { recognition.start(); escuchando = true; } catch(e) {}
+        try { recognition.start(); } catch(e) {}
     }
 
     function despertarChatarra() {
