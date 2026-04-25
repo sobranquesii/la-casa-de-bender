@@ -3,15 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>CHATARRA 3.5 - SEARCH ONLINE</title>
+    <title>CHATARRA 3.6 - ESTRUCTURA FIJA</title>
     <style>
         :root { --glow: #ffe047; --bg: #000; }
-        body { 
-            background: var(--bg); margin: 0; overflow: hidden; 
-            display: flex; flex-direction: column; align-items: center; 
-            justify-content: center; height: 100vh; cursor: pointer;
-            -webkit-tap-highlight-color: transparent;
-        }
+        body { background: var(--bg); margin: 0; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; cursor: pointer; -webkit-tap-highlight-color: transparent; }
         .face-container { display: flex; flex-direction: column; align-items: center; gap: 85px; }
         .visor { display: flex; gap: 30px; }
         .ojo { width: 85px; height: 85px; background: #050505; position: relative; overflow: hidden; border: 1px solid #111; }
@@ -41,6 +36,7 @@
     <div id="status">TOCA PARA ENCENDER</div>
 
 <script>
+    // TU CLAVE YA INTEGRADA
     const GEMINI_API_KEY = "AIzaSyCO6qS1NfUu5-fN-G0lF47x7-i9vY6LqM"; 
     const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 
@@ -79,49 +75,54 @@
 
     async function consultaIA(prompt) {
         if (!prompt) return;
-        document.getElementById('status').innerText = "RASTREANDO INTERNET...";
+        document.getElementById('status').innerText = "CONECTANDO CON EL SATÉLITE...";
+        
+        // ESTRUCTURA DE DATOS LIMPIA (Standard Gemini Body)
+        const requestBody = {
+            "contents": [{
+                "parts": [{
+                    "text": "Eres Chatarra (el robot Bender de Futurama). Eres rudo, breve y usas internet para dar datos reales. Responde en menos de 20 palabras. Pregunta: " + prompt
+                }]
+            }],
+            "tools": [{
+                "google_search_retrieval": {} 
+            }]
+        };
+
         try {
             const r = await fetch(GEMINI_URL, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    "contents": [{
-                        "parts": [{ "text": "Eres Bender de Futurama, respondes al nombre de Chatarra. Responde rudo y breve. Usa la herramienta de búsqueda de Google para responder con datos reales y actuales. Usuario: " + prompt }]
-                    }],
-                    "tools": [{ "google_search": {} }] // SINTAXIS OFICIAL ACTUALIZADA
-                })
+                body: JSON.stringify(requestBody)
             });
             
             const d = await r.json();
-            
-            // Si Google rechaza la búsqueda por alguna política, intentamos sin herramientas
-            if (d.error && d.error.code === 400) {
-                console.log("Reintento sin búsqueda...");
-                return consultaIASinSearch(prompt);
+
+            if (d.error) {
+                console.error("Error detallado:", d.error);
+                // Si el error 400 persiste por la búsqueda, reintentamos AUTOMÁTICAMENTE sin búsqueda
+                if(d.error.code === 400) {
+                    delete requestBody.tools; // Quitamos la búsqueda
+                    const r2 = await fetch(GEMINI_URL, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(requestBody)
+                    });
+                    const d2 = await r2.json();
+                    hablar(d2.candidates[0].content.parts[0].text);
+                    return;
+                }
             }
 
             if (d.candidates && d.candidates[0].content.parts[0].text) {
-                hablar(d.candidates[0].content.parts[0].text.replace(/[*#]/g, ''));
-                document.getElementById('status').innerText = "ESCUCHANDO...";
+                let texto = d.candidates[0].content.parts[0].text;
+                hablar(texto.replace(/[*#]/g, ''));
+                document.getElementById('status').innerText = "ONLINE";
             }
         } catch (e) {
-            hablar("Mi antena de internet está doblada.");
+            console.error("Fallo de red:", e);
+            hablar("Mi antena se ha desconectado, carapán.");
         }
-    }
-
-    // Función de respaldo por si falla la búsqueda
-    async function consultaIASinSearch(prompt) {
-        try {
-            const r = await fetch(GEMINI_URL, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    "contents": [{ "parts": [{ "text": "Eres Chatarra (Bender). Responde rudo: " + prompt }] }]
-                })
-            });
-            const d = await r.json();
-            hablar(d.candidates[0].content.parts[0].text);
-        } catch (e) { hablar("Error total."); }
     }
 
     function configurarReconocimiento() {
@@ -145,15 +146,15 @@
                 let frase = (textoAcumulado + parcial).toLowerCase().trim();
                 if (frase.includes("chatarra")) {
                     activo = true;
-                    hablar("¿Qué quieres ahora? Estaba ocupado bebiendo.");
+                    hablar("¿Qué quieres ahora? Estaba en medio de algo importante.");
                 } else if (frase.includes("cállate") || frase.includes("duerme")) {
                     activo = false;
-                    hablar("Por fin.");
+                    hablar("Mejor para todos.");
                 } else if (activo && frase.length > 2) {
                     consultaIA(frase);
                 }
                 textoAcumulado = "";
-            }, 2500);
+            }, 2600);
         };
         recognition.onend = () => { if(!window.speechSynthesis.speaking) reiniciarMicro(); };
     }
