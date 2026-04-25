@@ -1,10 +1,9 @@
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BENDER UNIT 3.2 - TOTAL</title>
+    <title>CHATARRA UNIT 3.3</title>
     <style>
         :root { --glow: #ffe047; --bg: #000; }
         body { 
@@ -23,10 +22,10 @@
         .diente { background: #111; transition: background 0.05s; }
         .hablando .diente { animation: vibe 0.12s infinite alternate; }
         @keyframes vibe { from { background: #1a1a1a; } to { background: var(--glow); box-shadow: 0 0 15px var(--glow); } }
-        #status { position: fixed; bottom: 10px; color: #444; font-family: monospace; font-size: 11px; text-align: center; width: 90%; min-height: 20px; }
+        #status { position: fixed; bottom: 10px; color: #555; font-family: monospace; font-size: 11px; text-align: center; width: 90%; }
     </style>
 </head>
-<body onclick="despertarBender()">
+<body onclick="despertarChatarra()">
 
     <div class="face-container">
         <div class="visor">
@@ -39,10 +38,9 @@
             <div class="diente"></div><div class="diente"></div><div class="diente"></div><div class="diente"></div><div class="diente"></div>
         </div>
     </div>
-    <div id="status">TOCA PARA ENCENDER A BENDER</div>
+    <div id="status">TOCA PARA DESPERTAR A CHATARRA</div>
 
 <script>
-    // API KEY INSERTADA POR GÉMINI
     const GEMINI_API_KEY = "AIzaSyCO6" + "qS1NfUu5-fN-G0lF47x7-i9vY6LqM"; 
     const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 
@@ -69,7 +67,7 @@
         msg.rate = 1.0;
         msg.onstart = () => {
             document.getElementById('boca').classList.add('hablando');
-            if(recognition) try { recognition.stop(); } catch(e){}
+            if(recognition && escuchando) try { recognition.stop(); } catch(e){}
         };
         msg.onend = () => {
             document.getElementById('boca').classList.remove('hablando');
@@ -87,16 +85,15 @@
 
     async function consultaIA(prompt) {
         if (!prompt) return;
-        document.getElementById('status').innerText = "BUSCANDO EN MIS CIRCUITOS...";
+        document.getElementById('status').innerText = "PROCESANDO...";
         try {
             const r = await fetch(GEMINI_URL, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     "contents": [{
-                        "role": "user",
                         "parts": [{
-                            "text": "Actúa como Bender de Futurama. Eres rudo, breve y sarcástico. Tienes permiso para usar Google Search si necesitas datos actuales o reales. Responde en menos de 25 palabras. Usuario dice: " + prompt
+                            "text": "Eres Bender de Futurama, pero respondes al nombre de Chatarra. Eres rudo, sarcástico y directo. Tienes acceso a Google Search. Responde en máximo 20 palabras. Pregunta: " + prompt
                         }]
                     }],
                     "tools": [{ "google_search_retrieval": {} }]
@@ -109,7 +106,7 @@
                 document.getElementById('status').innerText = "ESCUCHANDO...";
             }
         } catch (e) {
-            hablar("Mi conexión se ha ido al cuerno.");
+            hablar("Mis circuitos están fritos.");
         }
     }
 
@@ -120,41 +117,46 @@
         recognition.lang = 'es-ES';
         recognition.continuous = true;
         recognition.interimResults = true;
+        
         recognition.onresult = (e) => {
             let parcial = "";
             for (let i = e.resultIndex; i < e.results.length; i++) {
                 if (e.results[i].isFinal) textoAcumulado += e.results[i][0].transcript + " ";
                 else parcial += e.results[i][0].transcript;
             }
-            document.getElementById('status').innerText = textoAcumulado + parcial;
+            
+            document.getElementById('status').innerText = (textoAcumulado + parcial).toUpperCase();
             clearTimeout(temporizadorSilencio);
+
             temporizadorSilencio = setTimeout(() => {
                 let frase = (textoAcumulado + parcial).toLowerCase().trim();
-                if (frase.includes("bender")) {
+                
+                if (frase.includes("chatarra")) {
                     activo = true;
-                    hablar("¿Qué quieres ahora? Estaba ocupado no haciendo nada.");
+                    hablar("¿Qué quieres ahora, saco de carne?");
                 } else if (frase.includes("cállate") || frase.includes("duerme")) {
                     activo = false;
-                    hablar("Al fin. No me despiertes.");
+                    hablar("Al fin silencio.");
                 } else if (activo && frase.length > 2) {
                     consultaIA(frase);
                 }
+                
                 textoAcumulado = "";
-            }, 2800); 
+            }, 2200); // Un poco más rápido para que no tarde tanto en responder
         };
+
         recognition.onend = () => { if(!window.speechSynthesis.speaking) reiniciarMicro(); };
-        recognition.onerror = () => { reiniciarMicro(); };
     }
 
     function reiniciarMicro() {
-        try { recognition.start(); escuchando = true; } catch(e) {}
+        try { recognition.start(); escuchando = true; } catch(e) { escuchando = false; }
     }
 
-    function despertarBender() {
+    function despertarChatarra() {
         if (!recognition) configurarReconocimiento();
         window.speechSynthesis.speak(new SpeechSynthesisUtterance("")); 
         reiniciarMicro();
-        document.getElementById('status').innerText = "ONLINE - DI 'BENDER'";
+        document.getElementById('status').innerText = "ONLINE - DI 'CHATARRA'";
     }
     window.speechSynthesis.onvoiceschanged = obtenerVozHombre;
 </script>
