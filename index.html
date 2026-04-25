@@ -3,14 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BENDER UNIT 2.8 - SUPER FIXED</title>
+    <title>BENDER 2.8.5 - REPAIR</title>
     <style>
         :root { --glow: #ffe047; --bg: #000; }
         body { 
             background: var(--bg); margin: 0; overflow: hidden; 
             display: flex; flex-direction: column; align-items: center; 
             justify-content: center; height: 100vh; cursor: pointer;
-            -webkit-tap-highlight-color: transparent;
         }
         .face-container { display: flex; flex-direction: column; align-items: center; gap: 85px; }
         .visor { display: flex; gap: 30px; }
@@ -22,7 +21,8 @@
         .diente { background: #111; transition: background 0.05s; }
         .hablando .diente { animation: vibe 0.12s infinite alternate; }
         @keyframes vibe { from { background: #1a1a1a; } to { background: var(--glow); box-shadow: 0 0 15px var(--glow); } }
-        #status { position: fixed; bottom: 10px; color: #fff; font-family: monospace; font-size: 12px; text-align: center; width: 100%; }
+        /* Aumentamos visibilidad del status para debug */
+        #status { position: fixed; bottom: 20px; color: #ffe047; font-family: monospace; font-size: 14px; text-align: center; width: 100%; text-shadow: 0 0 5px #000; }
     </style>
 </head>
 <body onclick="despertarBender()">
@@ -38,7 +38,7 @@
             <div class="diente"></div><div class="diente"></div><div class="diente"></div><div class="diente"></div><div class="diente"></div>
         </div>
     </div>
-    <div id="status">TOCA LA PANTALLA PARA INICIAR</div>
+    <div id="status">PULSA AQUÍ PARA DAR ENERGÍA</div>
 
 <script>
     const API_KEY = "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";
@@ -46,7 +46,6 @@
 
     let activo = false;
     let recognition;
-    let escuchando = false;
 
     function hablar(t) {
         window.speechSynthesis.cancel();
@@ -55,7 +54,10 @@
         msg.pitch = 0.3; 
         msg.rate = 0.9;
         msg.onstart = () => document.getElementById('boca').classList.add('hablando');
-        msg.onend = () => document.getElementById('boca').classList.remove('hablando');
+        msg.onend = () => {
+            document.getElementById('boca').classList.remove('hablando');
+            setTimeout(iniciarMicro, 200); // Reiniciar después de hablar
+        };
         window.speechSynthesis.speak(msg);
     }
 
@@ -67,7 +69,6 @@
     parpadeo();
 
     async function consultaIA(prompt) {
-        if (!prompt || prompt.trim().length < 2) return;
         try {
             const r = await fetch(API_URL, {
                 method: "POST",
@@ -75,89 +76,71 @@
                 body: JSON.stringify({
                     "model": "llama-3.1-8b-instant",
                     "messages": [
-                        { "role": "system", "content": "Eres Bender. Responde como un asistente directo, rudo y breve. Máximo 12 palabras." },
+                        { "role": "system", "content": "Eres Bender. Rudo y breve. Máximo 10 palabras." },
                         { "role": "user", "content": prompt }
                     ]
                 })
             });
             const d = await r.json();
-            if (d.choices) {
-                hablar(d.choices[0].message.content);
-            } else {
-                hablar("Error en el cerebro robótico.");
-            }
-        } catch (e) { 
-            console.log("Error API", e);
-            hablar("Mis circuitos de internet han fallado."); 
-        }
+            if (d.choices) hablar(d.choices[0].message.content);
+        } catch (e) { hablar("Cerebro frito."); }
     }
 
-    function configurarReconocimiento() {
-        const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (!Speech) {
-            document.getElementById('status').innerText = "ERROR: NAVEGADOR NO COMPATIBLE";
-            return;
+    function iniciarMicro() {
+        if (!recognition) {
+            const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new Speech();
+            recognition.lang = 'es-ES';
+            // CAMBIO CLAVE: Quitamos continuous para forzar el procesamiento
+            recognition.continuous = false; 
+            recognition.interimResults = false;
+
+            recognition.onresult = (e) => {
+                const texto = e.results[0][0].transcript.toLowerCase();
+                document.getElementById('status').innerText = "OÍDO: " + texto;
+
+                if (texto.includes("bender") || texto.includes("vender")) {
+                    activo = true;
+                    hablar("Dime, saco de carne");
+                    return;
+                }
+                
+                if (texto.includes("cállate") || texto.includes("duerme")) {
+                    activo = false;
+                    hablar("Por fin");
+                    return;
+                }
+
+                if (activo) consultaIA(texto);
+            };
+
+            recognition.onend = () => {
+                // Si no está hablando, reiniciamos el micro para seguir escuchando
+                if (!window.speechSynthesis.speaking) {
+                    recognition.start();
+                }
+            };
+
+            recognition.onerror = (err) => {
+                console.error(err);
+                if (err.error !== 'no-speech') {
+                    document.getElementById('status').innerText = "ERROR: " + err.error;
+                }
+                setTimeout(() => recognition.start(), 500);
+            };
         }
-        
-        recognition = new Speech();
-        recognition.lang = 'es-ES';
-        recognition.continuous = true;
-        recognition.interimResults = false;
 
-        recognition.onstart = () => {
-            escuchando = true;
-            document.getElementById('status').innerText = "VIGILANDO... (Di 'Bender')";
-        };
-
-        recognition.onresult = (e) => {
-            const texto = e.results[e.results.length - 1][0].transcript.toLowerCase();
-            document.getElementById('status').innerText = "OÍDO: " + texto;
-
-            // 1. LÓGICA DE ACTIVACIÓN: Ahora reconoce "bender" y "vender"
-            if (texto.includes("bender") || texto.includes("vender")) {
-                activo = true;
-                hablar("¿Qué quieres ahora, saco de carne?");
-                return;
-            }
-            
-            // 2. LÓGICA DE DESACTIVACIÓN
-            if (texto.includes("cállate") || texto.includes("duerme")) {
-                activo = false;
-                hablar("Por fin, paz.");
-                return;
-            }
-
-            // 3. RESPUESTA
-            if (activo) {
-                consultaIA(texto);
-            }
-        };
-
-        recognition.onerror = (event) => {
-            escuchando = false;
-            document.getElementById('status').innerText = "ERROR DE MICRO: " + event.error;
-            setTimeout(reiniciarMicro, 500);
-        };
-
-        recognition.onend = () => {
-            escuchando = false;
-            reiniciarMicro();
-        };
-    }
-
-    function reiniciarMicro() {
-        if (!escuchando) {
-            try {
-                recognition.start();
-            } catch(e) {}
-        }
+        try {
+            recognition.start();
+            document.getElementById('status').innerText = "TE ESCUCHO...";
+        } catch(e) {}
     }
 
     function despertarBender() {
-        if (!recognition) configurarReconocimiento();
+        // Desbloqueo de audio
         window.speechSynthesis.speak(new SpeechSynthesisUtterance(""));
-        reiniciarMicro();
-        document.getElementById('status').innerText = "SISTEMA ONLINE - ESPERANDO VOZ";
+        iniciarMicro();
+        document.getElementById('status').innerText = "SISTEMA ONLINE";
     }
 </script>
 </body>
