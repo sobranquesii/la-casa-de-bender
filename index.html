@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>CHATARRA UNIT 3.8 - TOTAL</title>
+    <title>CHATARRA UNIT 3.9 - FIXED</title>
     <style>
         :root { --glow: #ffe047; --bg: #000; }
         body { background: var(--bg); margin: 0; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; cursor: pointer; -webkit-tap-highlight-color: transparent; }
         .face-container { display: flex; flex-direction: column; align-items: center; gap: 85px; }
         .visor { display: flex; gap: 30px; }
-        .ojo { width: 85px; height: 85px; background: #050505; position: relative; overflow: hidden; border: 1px solid #111; }
+        .ojo { width: 85px; height: 85px; background: #050505; border: 1px solid #111; position: relative; overflow: hidden; }
         .pupila { width: 26px; height: 26px; background: var(--glow); position: absolute; top: 29px; left: 29px; box-shadow: 0 0 20px var(--glow); }
         .ojo::after { content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 0%; background: #222; transition: height 0.1s; }
         .ojo.blink::after { height: 100%; }
@@ -29,16 +29,16 @@
         </div>
         <div class="boca" id="boca">
             <div class="diente"></div><div class="diente"></div><div class="diente"></div><div class="diente"></div><div class="diente"></div>
-            <div class="diente"></div><div class="diente"></div><div class="diente de-oro"></div><div class="diente"></div><div class="diente"></div>
+            <div class="diente"></div><div class="diente"></div><div class="diente"></div><div class="diente"></div><div class="diente"></div>
             <div class="diente"></div><div class="diente"></div><div class="diente"></div><div class="diente"></div><div class="diente"></div>
         </div>
     </div>
     <div id="status">TOCA PARA DESPERTAR A CHATARRA</div>
 
 <script>
-    // USANDO TU PRIMERA API KEY SUMINISTRADA
+    // USANDO TU PRIMERA API KEY Y LA URL ESTABLE v1
     const GEMINI_API_KEY = "AIzaSyBaarnZavbXCUTB9gCuN3u9oVsgk-jsk1o"; 
-    const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+    const GEMINI_URL = `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`;
 
     let activo = false;
     let recognition;
@@ -50,16 +50,11 @@
         window.speechSynthesis.cancel();
         const msg = new SpeechSynthesisUtterance(t);
         msg.lang = 'es-ES';
-        
-        // Buscador de voz de hombre mejorado
         const voces = window.speechSynthesis.getVoices();
-        const vozHombre = voces.find(v => v.lang.includes('es') && 
-            (v.name.includes('Male') || v.name.includes('Pablo') || v.name.includes('Google') || v.name.includes('Cástor')));
-        
+        const vozHombre = voces.find(v => v.lang.includes('es') && (v.name.includes('Male') || v.name.includes('Pablo') || v.name.includes('Google')));
         if (vozHombre) msg.voice = vozHombre;
-        msg.pitch = 0.75; // Tono varonil
-        msg.rate = 1.05;
-        
+        msg.pitch = 0.7; 
+        msg.rate = 1.0;
         msg.onstart = () => {
             document.getElementById('boca').classList.add('hablando');
             if(recognition) try { recognition.stop(); } catch(e){}
@@ -80,37 +75,31 @@
 
     async function consultaIA(prompt) {
         if (!prompt) return;
-        document.getElementById('status').innerText = "Rastreando la red, saco de carne...";
+        document.getElementById('status').innerText = "Rastreando datos, pringado...";
         
-        const requestBody = {
-            "contents": [{
-                "parts": [{ "text": "Eres el robot Chatarra (inspirado en Bender). Eres rudo, cínico y directo. TIENES ACCESO A INTERNET. Usa siempre Google Search para responder con precisión. Responde breve (máximo 20 palabras). Pregunta: " + prompt }]
-            }],
-            "tools": [{ "google_search_retrieval": {} }]
-        };
-
         try {
             const r = await fetch(GEMINI_URL, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(requestBody)
+                body: JSON.stringify({
+                    "contents": [{
+                        "parts": [{ "text": "Eres Bender (Chatarra). Rudo, breve y con humor negro. Responde en menos de 20 palabras. Pregunta: " + prompt }]
+                    }]
+                })
             });
             
             const d = await r.json();
 
-            if (d.error) {
-                console.error("Error de API:", d.error.message);
-                hablar("Algo ha fallado en mis circuitos. Revisa mi clave o dame una cerveza.");
-                return;
-            }
-
             if (d.candidates && d.candidates[0].content) {
                 let texto = d.candidates[0].content.parts[0].text;
                 hablar(texto.replace(/[*#]/g, ''));
-                document.getElementById('status').innerText = "ONLINE - CHATARRA TE ESCUCHA";
+                document.getElementById('status').innerText = "ONLINE";
+            } else {
+                console.error("Respuesta vacía:", d);
+                hablar("No me apetece responderte.");
             }
         } catch (e) {
-            hablar("Mi antena se ha desconectado. ¡Maldición!");
+            hablar("Error en mi antena.");
         }
     }
 
@@ -133,14 +122,12 @@
 
             temporizadorSilencio = setTimeout(() => {
                 let frase = (textoAcumulado + parcial).toLowerCase().trim();
-                
-                // ACTIVACIÓN POR NOMBRE "CHATARRA"
                 if (frase.includes("chatarra")) {
                     activo = true;
-                    hablar("¿Qué quieres ahora? Estaba ocupado insultando a otros humanos.");
+                    hablar("¿Qué quieres ahora? Estaba ocupado.");
                 } else if (frase.includes("cállate") || frase.includes("duerme")) {
                     activo = false;
-                    hablar("Al fin. No me molestes.");
+                    hablar("Al fin.");
                 } else if (activo && frase.length > 2) {
                     consultaIA(frase);
                 }
@@ -160,9 +147,6 @@
         reiniciarMicro();
         document.getElementById('status').innerText = "ONLINE - DI 'CHATARRA'";
     }
-    
-    // Asegurar que las voces carguen
-    window.speechSynthesis.onvoiceschanged = () => {};
 </script>
 </body>
 </html>
